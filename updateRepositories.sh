@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# No write permission, but terminal => restart as root using sudo, user jenkins can do this with>
+# No write permission, but terminal => restart as root using sudo, user jenkins can do this without password
 ! [ -w "${0}" ] \
     && [ -t 0 ] \
     && sudo "${0}" "${1}" \
     && exit 0
 
-# No write permission and no terminal => restart as root using sudo non-interactive, user jenkin>
+# No write permission and no terminal => restart as root using sudo non-interactive, user jenkins can do this without password
 ! [ -w "${0}" ] \
     && ! [ -t 0 ] \
     && sudo -n "${0}" "${1}" \
@@ -23,9 +23,9 @@ function update_repositories() {
     local _ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
     _UPDATE_REPOSITORIES="$(readlink -f "${0}" 2> /dev/null)"
     _MODE="${1:-"all"}"
-    _ROOT="$(dirname ${_UPDATE_REPOSITORIES:?"Missing UPDATE_REPOSITORIES"} 2> /dev/null || echo>
+    _ROOT="$(dirname ${_UPDATE_REPOSITORIES:?"Missing UPDATE_REPOSITORIES"} 2> /dev/null || echo "/iss")/"
     _DOMAIN="$(cat ${_ROOT:?"Missing ROOT"}domainOfHostOwner)"
-    _DEFINITIONS="${_ROOT}definitions/${_DOMAIN:?"Missing DOMAIN from file: ${_ROOT}domainOfHost>
+    _DEFINITIONS="${_ROOT}definitions/${_DOMAIN:?"Missing DOMAIN from file: ${_ROOT}domainOfHostOwner"}/"
     _STATES="${_ROOT}states/${_DOMAIN:?"Missing DOMAIN from file: ${_ROOT}domainOfHostOwner"}/"
     readonly _ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
 
