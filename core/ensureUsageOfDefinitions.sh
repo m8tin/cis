@@ -24,6 +24,28 @@ function isCoreDefinition() {
     return 1
 }
 
+function filterInvalidAuthorizedKeysFilesOfRoot() {
+    local _FILE_DEFINED
+    _FILE_DEFINED="${1:?"Missing DEFINITION FILE"}"
+    readonly _FILE_DEFINED
+
+    #If the full filename contains 'root/.ssh/authorized_keys' then check the content.
+    #Skip lines starting with '#' and if at least one remaining line contains 'ssh' and '@' then print the filename. 
+    echo "${_FILE_DEFINED}" | grep -F 'root/.ssh/authorized_keys' &> /dev/null \
+        && grep -vE '^[[:blank:]]*#' "${_FILE_DEFINED}" | grep -F 'ssh' | grep -F '@' &> /dev/null \
+        && echo "${_FILE_DEFINED}" \
+        && return 0
+
+    #If the full filename contains 'root/.ssh/authorized_keys' print nothing because the file has to be invalid.
+    echo "${_FILE_DEFINED}" | grep -F 'root/.ssh/authorized_keys' &> /dev/null \
+        && echo \
+        && return 0
+
+    #Print the full filename because it does not contain 'root/.ssh/authorized_keys'
+    echo "${_FILE_DEFINED}"
+    return 0
+}
+
 function printSelectedDefinition() {
     local _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
     _CORE_FILE_DEFINED_ALL_HOSTS="${1:?"Missing DEFINITIONS"}/core/all${2:?"Missing CURRENT_FULLFILE"}"
@@ -36,13 +58,13 @@ function printSelectedDefinition() {
     #Try this host first because it should be priorized.
     isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_CORE_FILE_DEFINED_THIS_HOST}" ] \
-        && echo "${_CORE_FILE_DEFINED_THIS_HOST}" \
+        && filterInvalidAuthorizedKeysFiles "${_CORE_FILE_DEFINED_THIS_HOST}" \
         && return 0
 
     #The following are special definitions that affect the core functionality.
     isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_CORE_FILE_DEFINED_ALL_HOSTS}" ] \
-        && echo "${_CORE_FILE_DEFINED_ALL_HOSTS}" \
+        && filterInvalidAuthorizedKeysFiles "${_CORE_FILE_DEFINED_ALL_HOSTS}" \
         && return 0
 
     #Try this host first because it should be priorized.
@@ -72,11 +94,6 @@ function createSymlinkToDefinition() {
         && echo "The content of the current file already matches the definition, but it will be replaced by a symlink..."
 
     [ -f "${_CURRENT_FULLFILE}" ] \
-        && [ "$(sha256sum "${_DEFINED_FULLFILE}" | cut -d' ' -f1)" == "$(sha256sum "${_CURRENT_FULLFILE}" | cut -d' ' -f1)" ] \
-        && echo "The content of the current file already matches the definition, but it will be replaced by a symlink..."
-
-
-    [ -f "${_CURRENT_FULLFILE}" ] \
         && mv "${_CURRENT_FULLFILE:?"Missing CURRENT_FULLFILE"}" "${_SAVED_FULLFILE:?"Missing SAVED_FULLFILE"}" \
         && echo "Current file has been backed up to: '${_SAVED_FULLFILE}'"
 
@@ -92,13 +109,13 @@ function createSymlinkToDefinition() {
 }
 
 function ensureUsageOfDefinitions() {
-    local _ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
+    local _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
     _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")"
-    _ROOT="${_DEFINITIONS%%/definitions/*}/"   #Removes longest  matching pattern '/definitions/*' from the end
-    _DOMAIN="${_DEFINITIONS##*/definitions/}"  #Removes longest  matching pattern '*/definitions/' from the begin
-    _DOMAIN="${_DOMAIN%/}"                     #Removes shortest matching pattern '/'              from the end
+    _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
+    _DOMAIN="${_DEFINITIONS##*/definitions/}"     #Removes longest  matching pattern '*/definitions/' from the begin
+    _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
     #Build from components for safety
-    _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}")"
+    _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}")"
 
 
     _CURRENT_FOLDER="$(dirname "${2:?"Missing second parameter CURRENT_FULLFILE"}")"
@@ -121,7 +138,13 @@ function ensureUsageOfDefinitions() {
     _DEFINED_FULLFILE="$(printSelectedDefinition "${_DEFINITIONS}" "${_CURRENT_FULLFILE}")"
     _NOW="$(date +%Y%m%d_%H%M)"
     _SAVED_FULLFILE="${_CURRENT_FULLFILE}-backup@${_NOW:?"Missing NOW"}"
-    readonly _ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
+    readonly _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
+
+    [ -z "${_DEFINED_FULLFILE}" ] \
+        && echo \
+        && echo "URGENT WARNING: If an 'authorized_keys' file of root is replaced by an invalid version," \
+        && echo "                you may lose access to this host!" \
+        && echo
 
     ! [ -f "${_DEFINED_FULLFILE}" ] \
         && echo "FAIL: No definition available for this file:       ("$(readlink -f ${0})")" \
@@ -138,11 +161,11 @@ function ensureUsageOfDefinitions() {
         && echo "  - '${_DEFINED_FULLFILE}'" \
         && return 0
 
-    echo "${_ROOT:?"Missing ROOT"}" | grep "home" &> /dev/null \
+    echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep "home" &> /dev/null \
         && echo "SUCCESS: Although this definition will be skipped: ("$(readlink -f ${0})")" \
         && echo "  - '${_DEFINED_FULLFILE}'" \
         && echo "  that is because the current environment is:" \
-        && echo "    - ${_ROOT}" \
+        && echo "    - ${_CIS_ROOT}" \
         && echo "  following file is in use:" \
         && echo "    - $(readlink -f "${_CURRENT_FULLFILE}")" \
         && return 0
@@ -174,4 +197,6 @@ function ensureUsageOfDefinitions() {
 ensureUsageOfDefinitions \
     "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0 || exit 1
+    && exit 0
+    
+exit 1

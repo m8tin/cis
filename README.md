@@ -1,5 +1,5 @@
-Infrastructure System (ISS)
-===========================
+Core Infrastructure System (CIS)
+================================
 
 Setup a new host
 ----------------
@@ -52,20 +52,20 @@ We use the modern ed25519 keys, so the public key of root is stored at this loca
 ### Register public host key
 This is an example for `example.net` as domain of the host owner.
 
-1. Repository `iss`, allow __readonly__ access only.
-2. Repository `iss-definition-example.net`, allow __readonly__ access only.
-3. Repository `iss-state-example.net`, allow __writable__ access.
+1. Repository `cis`, allow __readonly__ access only.
+2. Repository `cis-definition-example.net`, allow __readonly__ access only.
+3. Repository `cis-state-example.net`, allow __writable__ access.
 
 
 
-### Clone the Infrastructure System (iss) repository
+### Clone the Infrastructure System (cis) repository
 After you registered the printed root's public key of this host you can clone the repository and execute the setup script:
 ```sh
-# Note the tailing '/iss', because we want to clone the repository to that folder
-git clone ssh://git@git.example.dev:22448/iss.git /iss
+# Note the tailing '/cis', because we want to clone the repository to that folder
+git clone ssh://git@git.example.dev:22448/cis.git /cis
 
 # Execute the setup script
-/iss/setupCoreOntoThisHost.sh
+/cis/setupCoreOntoThisHost.sh
 ```
 
 <br>
@@ -74,7 +74,7 @@ git clone ssh://git@git.example.dev:22448/iss.git /iss
 
 How it works
 ------------
-We add a webhook to each gitea repository that belongs to ISS:
+We add a webhook to each gitea repository that belongs to CIS:
  - __Taget URL:__   https://YOUR.JENKINS.DOMAIN/generic-webhook-trigger/invoke?token=YOUR_TOKEN
  - __HTTP-Method:__ POST
  - __Trigger On:__  Push Events
@@ -98,7 +98,7 @@ cat "${JENKINS_HOME}/.ssh/id_ed25519.pub" \
     && cat "${JENKINS_HOME}/.ssh/id_ed25519.pub")
 
 # add your host here, note the tailing '&' to run it in parallel
-ssh -o StrictHostKeyChecking=no jenkins@192.168.X.Y /iss/update_repositories.sh ( --scripts | --definitions | --states ) &
+ssh -o StrictHostKeyChecking=no jenkins@192.168.X.Y /cis/update_repositories.sh ( --scripts | --definitions | --states ) &
 
 #wait for all background processes to complete
 wait

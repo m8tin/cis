@@ -73,7 +73,7 @@ function cloneOrPull {
 function addAndCheckGitRepository() {
     local _FOLDER _REPOSITORY
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _REPOSITORY="${2:?"Missing second parameter REPOSITORY: e.g. ssh://git@your.domain.com/iss.git "}"
+    _REPOSITORY="${2:?"Missing second parameter REPOSITORY: e.g. ssh://git@your.domain.com/cis.git "}"
     _RIGHTS="${3:?"Missing third parameter RIGHTS: (readonly, writable) "}"
     readonly _FOLDER _REPOSITORY
 
@@ -98,4 +98,6 @@ addAndCheckGitRepository \
     "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     "$(echo ${3} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0 || exit 1
+    && exit 0
+
+exit 1

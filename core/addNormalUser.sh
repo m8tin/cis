@@ -34,6 +34,7 @@ function addNormalUser() {
 }
 
 # sanitizes all parameters
-addNormalUser \
-    "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0 || exit 1
+addNormalUser "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+    && exit 0
+
+exit 1
