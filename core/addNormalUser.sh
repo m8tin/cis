@@ -18,6 +18,8 @@ function addNormalUser() {
         && echo "  - '${_USER}'" \
         && return 0
 
+    # useradd is a low level utility ... use adduser(8) instead.
+    # See: https://askubuntu.com/questions/345974/what-is-the-difference-between-adduser-and-useradd
     [ "$(id -u)" == "0" ] \
         && adduser --gecos 'Normal user' --disabled-password "${_USER}" \
         && chown -R "${_USER}:${_USER}" "/home/${_USER}" \
