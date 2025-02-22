@@ -39,7 +39,7 @@ function checkPreconditions() {
     ! [ -z "${_DOMAIN}" ] \
         && [ "$(hostname -d)" != "${_DOMAIN}" ] \
         && echo \
-        && echo "WARNING: system-domain DOES NOT MATCH domainOfHostOwner: '$(hostname -d)' != '${_DOMAIN}'" \
+        && echo "WARNING: system-domain DOES NOT MATCH overrideOwnDomain: '$(hostname -d)' != '${_DOMAIN}'" \
         && echo
 
     # Given domain verfügbar (nicht leer)
@@ -71,7 +71,7 @@ function checkPreconditions() {
 function getOrSetDomain() {
     local _CIS_ROOT _DOMAIN_FILE _GIVEN_DOMAIN
     _CIS_ROOT="${1:?"Missing parameter CIS_ROOT"}"
-    _DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}domainOfHostOwner"
+    _DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
     _GIVEN_DOMAIN="${2}" # Optional parameter DOMAIN
     readonly _CIS_ROOT _DOMAIN_FILE _GIVEN_DOMAIN
 
