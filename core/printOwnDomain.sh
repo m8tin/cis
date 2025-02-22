@@ -19,7 +19,7 @@ _OVERRIDE_DOMAIN="$(grep -vE '^[[:space:]]*$|^[[:space:]]*#' "${_OVERRIDE_DOMAIN
 
 ! [ -z "${_OVERRIDE_DOMAIN}" ] \
     && [ "${_OVERRIDE_DOMAIN}" != "${_BOOT_DOMAIN}" ] \
-    && echo "WARNING: Domain has been overridden by: ${_OVERRIDE_DOMAIN_FILE}" > /dev/stderr \
+    && echo "WARNING: Domain has been overridden by: ${_OVERRIDE_DOMAIN_FILE}" >&2 \
     && echo "${_OVERRIDE_DOMAIN}" \
     && exit 0
 
@@ -27,5 +27,5 @@ _OVERRIDE_DOMAIN="$(grep -vE '^[[:space:]]*$|^[[:space:]]*#' "${_OVERRIDE_DOMAIN
     && echo "${_BOOT_DOMAIN}" \
     && exit 0
 
-echo "It was impossible to find out the domain of this host, please prepare this host first." > /dev/stderr
+echo "It was impossible to find out the domain of this host, please prepare this host first." >&2
 exit 1
