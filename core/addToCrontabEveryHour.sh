@@ -21,7 +21,7 @@ function addToCrontabEveryHour() {
         && return 0
 
     [ "$(id -u)" == "0" ] \
-        && echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep "home" &> /dev/null \
+        && echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep -F 'home' &> /dev/null \
         && echo "SUCCESS: Although the entry will be skipped:       ("$(readlink -f ${0})")" \
         && echo "  - '${_STRING}'" \
         && echo "  that is because the current environment is:" \

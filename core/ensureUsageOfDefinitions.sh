@@ -12,13 +12,13 @@ function printIfEqual() {
 }
 
 function isCoreDefinition() {
-    echo "${1:?"Missing first parameter FILE"}" | grep "/root/.ssh/authorized_keys" &> /dev/null \
+    echo "${1:?"Missing first parameter FILE"}" | grep -F '/root/.ssh/authorized_keys' &> /dev/null \
         && return 0
 
-    echo "${1:?"Missing first parameter FILE"}" | grep "/home/jenkins/.ssh/authorized_keys" &> /dev/null \
+    echo "${1:?"Missing first parameter FILE"}" | grep -F '/home/jenkins/.ssh/authorized_keys' &> /dev/null \
         && return 0
 
-    echo "${1:?"Missing first parameter FILE"}" | grep "/etc/sudoers.d/allow-jenkins-updateRepositories" &> /dev/null \
+    echo "${1:?"Missing first parameter FILE"}" | grep -F '/etc/sudoers.d/allow-jenkins-updateRepositories' &> /dev/null \
         && return 0
 
     return 1
@@ -161,7 +161,7 @@ function ensureUsageOfDefinitions() {
         && echo "  - '${_DEFINED_FULLFILE}'" \
         && return 0
 
-    echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep "home" &> /dev/null \
+    echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep -F 'home' &> /dev/null \
         && echo "SUCCESS: Although this definition will be skipped: ("$(readlink -f ${0})")" \
         && echo "  - '${_DEFINED_FULLFILE}'" \
         && echo "  that is because the current environment is:" \

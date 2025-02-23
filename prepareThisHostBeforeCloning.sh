@@ -8,7 +8,7 @@
 function setNeededHostnameOrExit() {
     _FQDN="${1:?"Missing unique long hostname (fqdn, eg.: host1.example.net) for this host as first parameter."}"
 
-    echo "${_FQDN}" | grep '\.' &> /dev/null \
+    echo "${_FQDN}" | grep -F '.' &> /dev/null \
         && hostnamectl set-hostname "${_FQDN}" \
         && return 0
 

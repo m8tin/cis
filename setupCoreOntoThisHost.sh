@@ -158,7 +158,7 @@ function addState() {
 function setupCoreFunctionality() {
     local _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
     _DEFINITIONS="${1:?"Missing DEFINITIONS: 'ROOT/definitions/DOMAIN'"}"
-    _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F . | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
+    _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F '.' | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
     _SETUP="${2:?"Missing SETUP"}"
     readonly _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
 
