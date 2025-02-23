@@ -6,6 +6,12 @@
 
 
 
+# Folders always ends with an tailing '/'
+_SETUP="$(readlink -f "${0}" 2> /dev/null)"
+_CIS_ROOT="$(dirname ${_SETUP:?"Missing SETUP"} 2> /dev/null)/"
+_CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
+
+
 
 function checkPathsAreAvaiable() {
     grep --version &> /dev/null \
@@ -31,10 +37,9 @@ function checkGitIsAvailable() {
 }
 
 function checkPreconditions() {
-    local _CIS_ROOT _DOMAIN
-    _CIS_ROOT="${1:?"Missing parameter CIS_ROOT"}"
-    _DOMAIN="${2}" # Optional parameter DOMAIN
-    readonly _CIS_ROOT _DOMAIN
+    local _DOMAIN
+    _DOMAIN="${1}" # Optional parameter DOMAIN
+    readonly _DOMAIN
 
     ! [ -z "${_DOMAIN}" ] \
         && [ "$(hostname -d)" != "${_DOMAIN}" ] \
@@ -46,7 +51,7 @@ function checkPreconditions() {
     ! [ -z "${_DOMAIN}" ] \
         && checkPathsAreAvaiable \
         && checkGitIsAvailable \
-        && git -C "${_CIS_ROOT}" pull &> /dev/null \
+        && git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" pull &> /dev/null \
         && return 0
 
     echo
@@ -69,40 +74,41 @@ function checkPreconditions() {
 }
 
 function getOrSetDomain() {
-    local _CIS_ROOT _DOMAIN_FILE _GIVEN_DOMAIN
-    _CIS_ROOT="${1:?"Missing parameter CIS_ROOT"}"
-    _DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
-    _GIVEN_DOMAIN="${2}" # Optional parameter DOMAIN
-    readonly _CIS_ROOT _DOMAIN_FILE _GIVEN_DOMAIN
+    local _CURRENT_DOMAIN _GIVEN_DOMAIN _OVERRIDE_DOMAIN_FILE
+    _CURRENT_DOMAIN="$("${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}printOwnDomain.sh")"
+    _GIVEN_DOMAIN="${1}" # Optional parameter DOMAIN
+    _OVERRIDE_DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
+    readonly _CURRENT_DOMAIN _GIVEN_DOMAIN _OVERRIDE_DOMAIN_FILE
 
-    # Wenn DOMAIN_FILE enhält lesbare Daten
-    grep '[^[:space:]]' "${_DOMAIN_FILE:?"Missing DOMAIN_FILE"}" &> /dev/null \
-        && cat "${_DOMAIN_FILE}" \
+    ! [ -z "${_CURRENT_DOMAIN}" ] \
+        && [ -z "${_GIVEN_DOMAIN}" ] \
+        && echo "${_CURRENT_DOMAIN}" \
         && return 0
 
-    # Der boot-hostname muss mindestens einen Punkt enthalten, dann wird die hintere Hälfte als Domain genommen
-    hostname -b | grep "\." | cut -d. -f2- > "${_DOMAIN_FILE}"
-    grep '[^[:space:]]' "${_DOMAIN_FILE}" &> /dev/null \
-        && cat "${_DOMAIN_FILE}" \
+    ! [ -z "${_CURRENT_DOMAIN}" ] \
+        && [ "${_CURRENT_DOMAIN}" == "${_GIVEN_DOMAIN}" ] \
+        && echo "${_CURRENT_DOMAIN}" \
         && return 0
 
-    # Given domain is set (nicht leer)
-    ! [ -z "${_GIVEN_DOMAIN}" ] \
+    # If there is a given domain it will be set or it will override the current one
+    [ -z "${_CURRENT_DOMAIN}" ] \
+        && ! [ -z "${_GIVEN_DOMAIN}" ] \
         && [ "$(id -u)" == "0" ] \
+        && echo "Setting hostname to: $(hostname -s).${_GIVEN_DOMAIN}" >&2 \
         && hostnamectl set-hostname "$(hostname -s).${_GIVEN_DOMAIN}" \
-        && hostname -b | grep "\." | cut -d. -f2- > "${_DOMAIN_FILE}" \
-        && grep '[^[:space:]]' "${_DOMAIN_FILE}" &> /dev/null \
-        && cat "${_DOMAIN_FILE}" \
+        && echo "${_GIVEN_DOMAIN}" \
+        && return 0
+
+    ! [ -z "${_GIVEN_DOMAIN}" ] \
+        && echo "Overwriting domain to: ${_GIVEN_DOMAIN}" >&2 \
+        && echo "${_GIVEN_DOMAIN}" > "${_OVERRIDE_DOMAIN_FILE}" \
+        && echo "${_GIVEN_DOMAIN}" \
         && return 0
 
     return 1
 }
 
 function getRemoteRepositoryPath() {
-    local _CIS_ROOT
-    _CIS_ROOT="${1:?"Missing parameter CIS_ROOT"}"
-    readonly _CIS_ROOT
-
     _RESULT="$(git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" remote show origin | grep -i 'fetch' | xargs -n 1 | grep -i 'ssh://')"
     _RESULT="${_RESULT%/*}"                        #Removes shortest matching pattern '/*' from the end
     ! [ -z "${_RESULT}" ] \
@@ -113,12 +119,10 @@ function getRemoteRepositoryPath() {
 }
 
 function addDefinition(){
-    local _CIS_ROOT _CORE_SCRIPTS _DEFINITIONS _REPOSITORY
+    local _DEFINITIONS _REPOSITORY
     _DEFINITIONS="${1:?"Missing parameter DEFINITIONS"}"
     _REPOSITORY="${2:?"Missing parameter REPOSITORY"}"
-    _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"   #Removes longest  matching pattern '/definitions/*' from the end
-    _CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
-    readonly _CIS_ROOT _CORE_SCRIPTS _DEFINITIONS _REPOSITORY
+    readonly _DEFINITIONS _REPOSITORY
     [ "$(id -u)" == "0" ] \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" readonly \
         && echo "  - definitions are usable for this host." \
@@ -133,12 +137,10 @@ function addDefinition(){
 }
 
 function addState() {
-    local _CIS_ROOT _CORE_SCRIPTS _STATES _REPOSITORY
+    local _STATES _REPOSITORY
     _STATES="${1:?"Missing parameter STATES"}"
     _REPOSITORY="${2:?"Missing parameter REPOSITORY"}"
-    _CIS_ROOT="${_STATES%%/states/*}/"             #Removes longest  matching pattern '/states/*' from the end
-    _CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
-    readonly _CIS_ROOT _CORE_SCRIPTS _STATES _REPOSITORY
+    readonly _STATES _REPOSITORY
 
     [ "$(id -u)" == "0" ] \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" "${_REPOSITORY}" writable \
@@ -154,13 +156,11 @@ function addState() {
 }
 
 function setupCoreFunctionality() {
-    local _CIS_ROOT _CORE_SCRIPTS _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
+    local _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
     _DEFINITIONS="${1:?"Missing DEFINITIONS: 'ROOT/definitions/DOMAIN'"}"
-    _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"   #Removes longest  matching pattern '/definitions/*' from the end
-    _CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
     _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F . | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
     _SETUP="${2:?"Missing SETUP"}"
-    readonly _CIS_ROOT _CORE_SCRIPTS _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
+    readonly _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
 
     [ "$(id -u)" != "0" ] \
         && echo "Configuration of host skipped because of insufficient rights." \
@@ -183,20 +183,18 @@ function setupCoreFunctionality() {
 }
 
 function setup() {
-    local _CIS_ROOT _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _SETUP _STATES _STATES_REPOSITORY
-    _SETUP="$(readlink -f "${0}" 2> /dev/null)"
-    _CIS_ROOT="$(dirname ${_SETUP:?"Missing SETUP"} 2> /dev/null || echo "/cis")/"
-    _DOMAIN="$(getOrSetDomain "${_CIS_ROOT:?"Missing CIS_ROOT"}" "${1}")"
-    _REPOSITORY_PATH="$(getRemoteRepositoryPath "${_CIS_ROOT:?"Missing CIS_ROOT"}")"
+    local _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _SETUP _STATES _STATES_REPOSITORY
+    _DOMAIN="$(getOrSetDomain "${1}")"
+    _REPOSITORY_PATH="$(getRemoteRepositoryPath)"
 
-    ! checkPreconditions "${_CIS_ROOT:?"Missing CIS_ROOT"}" "${_DOMAIN}" \
+    ! checkPreconditions "${_DOMAIN}" \
         && return 1
 
     _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
     _DEFINITIONS_REPOSITORY="${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}/cis-definition-${_DOMAIN:?"Missing DOMAIN"}.git"
     _STATES="${_CIS_ROOT:?"Missing CIS_ROOT"}states/${_DOMAIN:?"Missing DOMAIN"}"
     _STATES_REPOSITORY="${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}/cis-state-${_DOMAIN:?"Missing DOMAIN"}.git"
-    readonly _CIS_ROOT _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _SETUP _STATES _STATES_REPOSITORY
+    readonly _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _SETUP _STATES _STATES_REPOSITORY
 
     echo \
         && echo "Running setup using repositories of: '${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}' ..." \
