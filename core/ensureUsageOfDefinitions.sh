@@ -58,13 +58,13 @@ function printSelectedDefinition() {
     #Try this host first because it should be priorized.
     isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_CORE_FILE_DEFINED_THIS_HOST}" ] \
-        && filterInvalidAuthorizedKeysFiles "${_CORE_FILE_DEFINED_THIS_HOST}" \
+        && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_FILE_DEFINED_THIS_HOST}" \
         && return 0
 
     #The following are special definitions that affect the core functionality.
     isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_CORE_FILE_DEFINED_ALL_HOSTS}" ] \
-        && filterInvalidAuthorizedKeysFiles "${_CORE_FILE_DEFINED_ALL_HOSTS}" \
+        && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_FILE_DEFINED_ALL_HOSTS}" \
         && return 0
 
     #Try this host first because it should be priorized.
