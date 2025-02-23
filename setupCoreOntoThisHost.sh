@@ -156,11 +156,10 @@ function addState() {
 }
 
 function setupCoreFunctionality() {
-    local _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
+    local _DEFINITIONS _MINUTE_FROM_OWN_IP
     _DEFINITIONS="${1:?"Missing DEFINITIONS: 'ROOT/definitions/DOMAIN'"}"
     _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F '.' | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
-    _SETUP="${2:?"Missing SETUP"}"
-    readonly _DEFINITIONS _MINUTE_FROM_OWN_IP _SETUP
+    readonly _DEFINITIONS _MINUTE_FROM_OWN_IP
 
     [ "$(id -u)" != "0" ] \
         && echo "Configuration of host skipped because of insufficient rights." \
@@ -176,14 +175,14 @@ function setupCoreFunctionality() {
         && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" /etc/sudoers.d/allow-jenkins-updateRepositories \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addToCrontabEveryHour.sh" "${_SETUP}" "${_MINUTE_FROM_OWN_IP}" \
+        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addToCrontabEveryHour.sh" "${_SETUP:?"Missing SETUP"}" "${_MINUTE_FROM_OWN_IP}" \
         && return 0
 
     return 1
 }
 
 function setup() {
-    local _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _SETUP _STATES _STATES_REPOSITORY
+    local _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _STATES _STATES_REPOSITORY
     _DOMAIN="$(getOrSetDomain "${1}")"
     _REPOSITORY_PATH="$(getRemoteRepositoryPath)"
 
@@ -194,7 +193,7 @@ function setup() {
     _DEFINITIONS_REPOSITORY="${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}/cis-definition-${_DOMAIN:?"Missing DOMAIN"}.git"
     _STATES="${_CIS_ROOT:?"Missing CIS_ROOT"}states/${_DOMAIN:?"Missing DOMAIN"}"
     _STATES_REPOSITORY="${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}/cis-state-${_DOMAIN:?"Missing DOMAIN"}.git"
-    readonly _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _SETUP _STATES _STATES_REPOSITORY
+    readonly _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _STATES _STATES_REPOSITORY
 
     echo \
         && echo "Running setup using repositories of: '${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}' ..." \
@@ -204,10 +203,10 @@ function setup() {
         && addState "${_STATES:?"Missing STATES"}" "${_STATES_REPOSITORY:?"Missing STATES_REPOSITORY"}" \
         && echo \
         && echo "Using definitions: '${_DEFINITIONS:?"Missing DEFINITIONS"}' ..." \
-        && setupCoreFunctionality "${_DEFINITIONS:?"Missing DEFINITIONS"}" "${_SETUP:?"Missing SETUP"}" \
+        && setupCoreFunctionality "${_DEFINITIONS:?"Missing DEFINITIONS"}" \
         && return 0
 
-    echo "FAIL: setup is incomplete:                        ("$(readlink -f ${0})")"
+    echo "FAIL: setup is incomplete:                         ("$(readlink -f ${0})")"
     echo "  - due to an error or insufficient rights."
     return 1
 }
