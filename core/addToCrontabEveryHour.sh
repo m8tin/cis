@@ -5,14 +5,18 @@
 
 
 
+# Folders always ends with an tailing '/'
+_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
+_CORE_SCRIPTS="$(dirname ${_SCRIPT:?"Missing SCRIPT"} 2> /dev/null)/"
+_CIS_ROOT="$(dirname ${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"} 2> /dev/null)/"
+
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addToCrontabEveryHour() {
-    local _CIS_ROOT _MINUTE_VALUE _STRING
-    _CIS_ROOT="${0%%/core/*}/"                              #Removes longest  matching pattern '/core/*' from the end
+    local _MINUTE_VALUE _STRING
     ! [ -z "${2##*[!0-9]*}" ] && _MINUTE_VALUE=$((${2}%60)) # if second parameter is integer then (minute-value % 60) as safe guard
     _STRING="${_MINUTE_VALUE:?"Missing MINUTE_VALUE"} * * * * ${1:?"Missing first parameter COMMAND"} > /dev/null 2>&1"
-    readonly _CIS_ROOT _MINUTE_VALUE _STRING
+    readonly _MINUTE_VALUE _STRING
 
     [ "$(id -u)" == "0" ] \
         && crontab -l | grep -qF "${_STRING:?"Missing CRON_STRING"}" \
