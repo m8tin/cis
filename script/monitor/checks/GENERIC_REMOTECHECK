@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# --connect-timeout SECONDS  Maximum time allowed for connection
+# -k                         Allow connections to SSL sites without certs (H)
+# -L                         Follow redirects (H)
+# --max-time        SECONDS  Maximum time allowed for the transfer
+# -s                         Silent mode. Don't output anything
+URL="${1:?"URL missing"}"
+RESULTS="$(curl  --connect-timeout 10 --max-time 10 -k -s "$URL" 2>/dev/null)"
+CURTIME="$[ $(date +%s) - 10 * 60 ]"
+TIME="$(echo "$RESULTS" | tail -n 1)"
+if (echo $TIME | grep -E "[^0-9"] > /dev/null); then echo "FAIL"; exit; fi
+RES="$(([ "$CURTIME" -gt "$TIME" ] && echo "TIMEOUT") || (echo "$RESULTS" | head -n 1))"
+echo $RES
+echo "$RESULTS" | tail -n +2 | head -n -1
+
+
