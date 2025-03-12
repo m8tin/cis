@@ -7,6 +7,6 @@ _CURRENT_POOL='zpool1'
 
 #Set with: 'zfs set compression=lz4 zpool1'
 zfs version &> /dev/null  \
-    && [ "$(zfs get compression -Ho value ${_CURRENT_POOL})" == "lz4" ] \
+    && [ "$(zfs get compression -Ho value ${_CURRENT_POOL} 2> /dev/null)" == "lz4" ] \
     && exit 0
 exit 1

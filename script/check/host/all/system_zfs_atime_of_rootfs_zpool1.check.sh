@@ -8,6 +8,6 @@ _CURRENT_POOL='zpool1'
 
 #Set with: 'zfs set atime=off zpool1'
 zfs version &> /dev/null  \
-    && [ "$(zfs get atime -Ho value ${_CURRENT_POOL})" == "off" ] \
+    && [ "$(zfs get atime -Ho value ${_CURRENT_POOL} 2> /dev/null)" == "off" ] \
     && exit 0
 exit 1
