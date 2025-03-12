@@ -1,8 +1,8 @@
 #!/bin/bash
 
-_CIS_ROOT="$(../../core/printCisRoot.sh)"
+_CIS_ROOT="$($(dirname $(readlink -f ${0}))/../../core/printCisRoot.sh)"
 _SCRIPT_PATH="${_CIS_ROOT:?"Missing CIS_ROOT"}script/"
-_OWN_DOMAIN="$(../../core/printOwnDomain.sh)"
+_OWN_DOMAIN="$(${_CIS_ROOT}core/printOwnDomain.sh)"
 _OWN_DEFINITIONS="${_CIS_ROOT}definitions/${_OWN_DOMAIN:?"Missing OWN_DOMAIN"}/"
 
 
