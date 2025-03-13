@@ -24,7 +24,7 @@ function update_repositories() {
     _UPDATE_REPOSITORIES="$(readlink -f "${0}" 2> /dev/null)"
     _MODE="${1:-"--core"}"
     _CIS_ROOT="$(dirname ${_UPDATE_REPOSITORIES:?"Missing UPDATE_REPOSITORIES"} 2> /dev/null || echo "/cis")/"
-    _DOMAIN="$(cat ${_CIS_ROOT:?"Missing CIS_ROOT"}domainOfHostOwner)"
+    _DOMAIN="$(${_CIS_ROOT:?"Missing CIS_ROOT"}/core/printOwnDomain.sh)"
     _DEFINITIONS="${_CIS_ROOT}definitions/${_DOMAIN:?"Missing DOMAIN from file: ${_CIS_ROOT}domainOfHostOwner"}/"
     _STATES="${_CIS_ROOT}states/${_DOMAIN:?"Missing DOMAIN from file: ${_CIS_ROOT}domainOfHostOwner"}/"
     readonly _CIS_ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
@@ -44,25 +44,29 @@ function update_repositories() {
         && return 0
 
     [ "${_MODE}" == "--scripts" ] \
-        && echo "Host $HOSTNAME updating scripts: ${_CIS_ROOT} ..." \
-        && (git -C "${_CIS_ROOT}" pull &> /dev/null &) \
+        && printf "Host $HOSTNAME updating scripts: ${_CIS_ROOT} ... " \
+        && (git -C "${_CIS_ROOT}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--definitions" ] \
-        && echo "Host ${HOSTNAME} updating definitions: ${_DEFINITIONS} ..." \
-        && (git -C "${_DEFINITIONS}" pull &> /dev/null &) \
+        && echo "Host ${HOSTNAME} updating definitions: ${_DEFINITIONS} ... " \
+        && (git -C "${_DEFINITIONS}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--states" ] \
-        && echo "Host ${HOSTNAME} updating states: ${_STATES} ..." \
-        && (git -C "${_STATES}" pull &> /dev/null &) \
+        && echo "Host ${HOSTNAME} updating states: ${_STATES} ... " \
+        && (git -C "${_STATES}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--core" ] \
-        && echo "Host ${HOSTNAME} updating core including scripts, definitions and states: ${_STATES} ..." \
-        && (git -C "${_CIS_ROOT}" pull &> /dev/null &) \
-        && (git -C "${_DEFINITIONS}" pull &> /dev/null &) \
-        && (git -C "${_STATES}" pull &> /dev/null &) \
+        && echo "Host ${HOSTNAME} updating core including scripts, definitions and states: ${_STATES} ... " \
+        && (git -C "${_CIS_ROOT}" pull &> /dev/null) \
+        && (git -C "${_DEFINITIONS}" pull &> /dev/null) \
+        && (git -C "${_STATES}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
     echo "FAILED: an error occurred during an update."

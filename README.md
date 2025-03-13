@@ -28,7 +28,7 @@ You can use this script to do so: [prepareThisHostBeforeCloning.sh](./prepareThi
 
 ### Ensure the existence of the repositories for your definitions and the state
 
-This should be necessary just if you set up the first host.   
+This should be necessary just if you set up the first host.  
 You can use the following scripts to assist the process:
 
 - [prepareDefinitionsRepository.sh](./prepareDefinitionsRepository.sh)
@@ -149,7 +149,7 @@ cat "${JENKINS_HOME}/.ssh/id_ed25519.pub" \
     && cat "${JENKINS_HOME}/.ssh/id_ed25519.pub")
 
 # add your host here, note the tailing '&' to run it in parallel
-ssh -o StrictHostKeyChecking=no jenkins@192.168.X.Y /cis/update_repositories.sh ( --scripts | --definitions | --states ) &
+ssh -o StrictHostKeyChecking=no jenkins@192.168.X.Y /cis/updateRepositories.sh ( --scripts | --definitions | --states ) &
 
 #wait for all background processes to complete
 wait
