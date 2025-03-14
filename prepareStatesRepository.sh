@@ -1,15 +1,12 @@
 #!/bin/bash
 
-[ "$(id -u)" == "0" ] \
-    && echo "This script prepares the content of the repository for the definitions." \
-    && echo "You have run it as root, please run it with a user who has write access to the Git server." \
-    && echo \
-    && echo "Do not use the SSH key of root for this." \
-    && echo \
+[ "$(id -u)" != "0" ] \
+    && echo "This script prepares the user 'root' of this host and the host itself," \
+    && echo "so this script is allowed to be executed if you are root only." \
     && exit 1
 
-_BOOT_HOSTNAME="$(hostname -b)"
-_BOOT_DOMAIN="${_BOOT_HOSTNAME#*.}"  #Removes shortest matching pattern '*.' from the begin to get the domain
+# There has to be one dot at least.
+_BOOT_DOMAIN="$(hostname -b | grep -F '.' | cut -d. -f2-)"
 
 [ -z "${_BOOT_DOMAIN}" ] \
     && echo "It was impossible to find out the domain of this host, please prepare this host first." \
@@ -36,14 +33,18 @@ The first content for your repository for the state of the '$_BOOT_DOMAIN' domai
 Please create a states repository.
 To follow the naming convention name it '$_REOPSITORY_NAME'
 
+Please DO NOT use the SSH key of root for this.
+Maybe you can use https and user password for pushing the first commit.
+
 Then go to folder '/tmp/skeleton/state' and follow the instructions as your git server shows.
 For example:
 
+  cd /tmp/skeleton/state
   git init
   git checkout -b main
   git add .
   git commit -m "first state"
-  git remote add origin ssh://git@git.example.dev:22448/$_REOPSITORY_NAME.git
+  git remote add origin https://git.example.dev/[SOME_PATH/]$_REOPSITORY_NAME.git
   git push -u origin main
 
 EOF

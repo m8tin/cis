@@ -1,15 +1,12 @@
 #!/bin/bash
 
-[ "$(id -u)" == "0" ] \
-    && echo "This script prepares the content of the repository for the definitions." \
-    && echo "You have run it as root, please run it with a user who has write access to the Git server." \
-    && echo \
-    && echo "Do not use the SSH key of root for this." \
-    && echo \
+[ "$(id -u)" != "0" ] \
+    && echo "This script prepares the user 'root' of this host and the host itself," \
+    && echo "so this script is allowed to be executed if you are root only." \
     && exit 1
 
-_BOOT_HOSTNAME="$(hostname -b)"
-_BOOT_DOMAIN="${_BOOT_HOSTNAME#*.}"  #Removes shortest matching pattern '*.' from the begin to get the domain
+# There has to be one dot at least.
+_BOOT_DOMAIN="$(hostname -b | grep -F '.' | cut -d. -f2-)"
 
 [ -z "${_BOOT_DOMAIN}" ] \
     && echo "It was impossible to find out the domain of this host, please prepare this host first." \
@@ -29,16 +26,9 @@ EOF
 
 
 
-#Generate sudoers file 'allow-jenkins-updateRepositories'
-mkdir -p /tmp/skeleton/definition/core/all/etc/sudoers.d
-cat << EOF > /tmp/skeleton/definition/core/all/etc/sudoers.d/allow-jenkins-updateRepositories
-Cmnd_Alias C_JENKINS = \\
-  /cis/updateRepositories.sh --core, \\
-  /cis/updateRepositories.sh --scripts, \\
-  /cis/updateRepositories.sh --definitions, \\
-  /cis/updateRepositories.sh --states
-jenkins ALL = (root) NOPASSWD: C_JENKINS
-EOF
+#Use current file 'authorized_keys' of root as definition
+mkdir -p /tmp/skeleton/definition/core/all/root/.ssh
+cp /root/.ssh/authorized_keys /tmp/skeleton/definition/core/all/root/.ssh/authorized_keys
 
 
 
@@ -52,18 +42,15 @@ EOF
 
 
 
-#Use current file 'authorized_keys' of root as definition
-mkdir -p /tmp/skeleton/definition/core/all/root/.ssh
-cp /root/.ssh/authorized_keys /tmp/skeleton/definition/core/all/root/.ssh/authorized_keys
-
-
-
 cat << EOF
 
 The first content for your repository for the definitions of the '$_BOOT_DOMAIN' domain has been created.
 
 Please create a definition repository.
 To follow the naming convention name it '$_REOPSITORY_NAME'
+
+Please DO NOT use the SSH key of root for this.
+Maybe you can use https and user password for pushing the first commit.
 
 Go to folder '/tmp/skeleton/definition' and check the content of all 'authorized_keys' files,
 correct them if required to prevent losing access to your hosts.
@@ -73,11 +60,12 @@ The public ssh key of your jenkins server has to be added.
 Only now follow the instructions as our git server shows.
 For example:
 
+  cd /tmp/skeleton/definition
   git init
   git checkout -b main
   git add .
   git commit -m "first core definitions"
-  git remote add origin ssh://git@git.example.dev:22448/$_REOPSITORY_NAME.git
+  git remote add origin https://git.example.dev/[SOME_PATH/]$_REOPSITORY_NAME.git
   git push -u origin main
 
 EOF

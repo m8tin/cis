@@ -47,33 +47,41 @@ function filterInvalidAuthorizedKeysFilesOfRoot() {
 }
 
 function printSelectedDefinition() {
-    local _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
-    _CORE_FILE_DEFINED_ALL_HOSTS="${1:?"Missing DEFINITIONS"}/core/all${2:?"Missing CURRENT_FULLFILE"}"
-    _CORE_FILE_DEFINED_THIS_HOST="${1:?"Missing DEFINITIONS"}/core/$(hostname -s)${2:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFINED_ALL_HOSTS="${1:?"Missing DEFINITIONS"}/hosts/all${2:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFINED_THIS_HOST="${1:?"Missing DEFINITIONS"}/hosts/$(hostname -s)${2:?"Missing CURRENT_FULLFILE"}"
-    readonly _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    local _DEFINITIONS  _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    _DEFINITIONS="${1:?"Missing CIS_ROOT"}definitions/${2:?"Missing DOMAIN"}/"
+    _CORE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}core/default${3:?"Missing CURRENT_FULLFILE"}"
+    _CORE_FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}core/all${3:?"Missing CURRENT_FULLFILE"}"
+    _CORE_FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}core/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
+    _FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/all${3:?"Missing CURRENT_FULLFILE"}"
+    _FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
+    readonly _DEFINITIONS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
 
     #The following are special definitions that affect the core functionality.
     #Try this host first because it should be priorized.
-    isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
+    isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_CORE_FILE_DEFINED_THIS_HOST}" ] \
         && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_FILE_DEFINED_THIS_HOST}" \
         && return 0
 
     #The following are special definitions that affect the core functionality.
-    isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
+    isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_CORE_FILE_DEFINED_ALL_HOSTS}" ] \
         && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_FILE_DEFINED_ALL_HOSTS}" \
         && return 0
 
+    #The following are special definitions that affect the core functionality.
+    isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
+        && [ -s "${_CORE_DEFAULT_ALL_HOSTS}" ] \
+        && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_DEFAULT_ALL_HOSTS}" \
+        && return 0
+
     #Try this host first because it should be priorized.
-    ! isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
+    ! isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_FILE_DEFINED_THIS_HOST}" ] \
         && echo "${_FILE_DEFINED_THIS_HOST}" \
         && return 0
 
-    ! isCoreDefinition "${2:?"Missing CURRENT_FULLFILE"}" \
+    ! isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_FILE_DEFINED_ALL_HOSTS}" ] \
         && echo "${_FILE_DEFINED_ALL_HOSTS}" \
         && return 0
@@ -110,12 +118,12 @@ function createSymlinkToDefinition() {
 
 function ensureUsageOfDefinitions() {
     local _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
-    _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")"
+    _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")/"
     _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
     _DOMAIN="${_DEFINITIONS##*/definitions/}"     #Removes longest  matching pattern '*/definitions/' from the begin
     _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
     #Build from components for safety
-    _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}")"
+    _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/")"
 
 
     _CURRENT_FOLDER="$(dirname "${2:?"Missing second parameter CURRENT_FULLFILE"}")"
@@ -135,7 +143,7 @@ function ensureUsageOfDefinitions() {
     _CURRENT_FULLFILE="${_CURRENT_FOLDER:?"Missing CURRENT_FOLDER"}${_CURRENT_FILE:?"Missing CURRENT_FILE"}"
 
 
-    _DEFINED_FULLFILE="$(printSelectedDefinition "${_DEFINITIONS}" "${_CURRENT_FULLFILE}")"
+    _DEFINED_FULLFILE="$(printSelectedDefinition "${_CIS_ROOT}" "${_DOMAIN}" "${_CURRENT_FULLFILE}")"
     _NOW="$(date +%Y%m%d_%H%M)"
     _SAVED_FULLFILE="${_CURRENT_FULLFILE}-backup@${_NOW:?"Missing NOW"}"
     readonly _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
@@ -198,5 +206,5 @@ ensureUsageOfDefinitions \
     "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     && exit 0
-    
+
 exit 1
