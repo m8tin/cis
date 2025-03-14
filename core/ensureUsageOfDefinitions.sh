@@ -145,7 +145,7 @@ function ensureUsageOfDefinitions() {
 
     _DEFINED_FULLFILE="$(printSelectedDefinition "${_CIS_ROOT}" "${_DOMAIN}" "${_CURRENT_FULLFILE}")"
     _NOW="$(date +%Y%m%d_%H%M)"
-    _SAVED_FULLFILE="${_CURRENT_FULLFILE}-backup@${_NOW:?"Missing NOW"}"
+    _SAVED_FULLFILE="${_CURRENT_FULLFILE}.backup@${_NOW:?"Missing NOW"}"
     readonly _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
 
     [ -z "${_DEFINED_FULLFILE}" ] \
