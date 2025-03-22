@@ -112,7 +112,7 @@ function getRemoteRepositoryPath() {
     _RESULT="$(git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" remote show origin | grep -i 'fetch' | xargs -n 1 | grep -i 'ssh://')"
     _RESULT="${_RESULT%/*}"                        #Removes shortest matching pattern '/*' from the end
     ! [ -z "${_RESULT}" ] \
-        && echo "${_RESULT}" \
+        && echo "${_RESULT}/" \
         && return 0
 
     return 1
@@ -120,15 +120,20 @@ function getRemoteRepositoryPath() {
 
 function addDefinition(){
     local _DEFINITIONS _REPOSITORY
-    _DEFINITIONS="${1:?"Missing parameter DEFINITIONS"}"
-    _REPOSITORY="${2:?"Missing parameter REPOSITORY"}"
+    _DEFINITIONS="${1:?"Missing first parameter DEFINITIONS"}"
+    _REPOSITORY="$(getRemoteRepositoryPath)cis-definition-${2:?"Missing second parameter DOMAIN"}.git"
     readonly _DEFINITIONS _REPOSITORY
+
     [ "$(id -u)" == "0" ] \
+        && echo "Running setup as 'root' trying to add definition repository:" \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" readonly \
         && echo "  - definitions are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
+        && echo "Running setup as 'user' trying to add definition repository:" \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" writable \
         && echo "  - definitions are usable, as working copy." \
         && return 0
@@ -138,16 +143,20 @@ function addDefinition(){
 
 function addState() {
     local _STATES _REPOSITORY
-    _STATES="${1:?"Missing parameter STATES"}"
-    _REPOSITORY="${2:?"Missing parameter REPOSITORY"}"
+    _STATES="${1:?"Missing first parameter STATES"}"
+    _REPOSITORY="$(getRemoteRepositoryPath)cis-state-${2:?"Missing second parameter DOMAIN"}.git"
     readonly _STATES _REPOSITORY
 
     [ "$(id -u)" == "0" ] \
+        && echo "Running setup as 'root' trying to add state repository:" \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" "${_REPOSITORY}" writable \
         && echo "  - states are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
+        && echo "Running setup as 'user' trying to add state repository:" \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" "${_REPOSITORY}" writable \
         && echo "  - states are usable, as working copy." \
         && return 0
@@ -182,25 +191,20 @@ function setupCoreFunctionality() {
 }
 
 function setup() {
-    local _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _STATES _STATES_REPOSITORY
+    local _DEFINITIONS _DOMAIN _STATES
     _DOMAIN="$(getOrSetDomain "${1}")"
-    _REPOSITORY_PATH="$(getRemoteRepositoryPath)"
 
     ! checkPreconditions "${_DOMAIN}" \
         && return 1
 
     _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
-    _DEFINITIONS_REPOSITORY="${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}/cis-definition-${_DOMAIN:?"Missing DOMAIN"}.git"
     _STATES="${_CIS_ROOT:?"Missing CIS_ROOT"}states/${_DOMAIN:?"Missing DOMAIN"}"
-    _STATES_REPOSITORY="${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}/cis-state-${_DOMAIN:?"Missing DOMAIN"}.git"
-    readonly _DEFINITIONS _DEFINITIONS_REPOSITORY _DOMAIN _REPOSITORY_PATH _STATES _STATES_REPOSITORY
+    readonly _DEFINITIONS _DOMAIN _STATES
 
     echo \
-        && echo "Running setup using repositories of: '${_REPOSITORY_PATH:?"Missing REPOSITORY_PATH"}' ..." \
+        && addDefinition "${_DEFINITIONS:?"Missing DEFINITIONS"}" "${_DOMAIN:?"Missing DOMAIN"}" \
         && echo \
-        && addDefinition "${_DEFINITIONS:?"Missing DEFINITIONS"}" "${_DEFINITIONS_REPOSITORY:?"Missing DEFINITIONS_REPOSITORY"}" \
-        && echo \
-        && addState "${_STATES:?"Missing STATES"}" "${_STATES_REPOSITORY:?"Missing STATES_REPOSITORY"}" \
+        && addState "${_STATES:?"Missing STATES"}" "${_DOMAIN:?"Missing DOMAIN"}" \
         && echo \
         && echo "Using definitions: '${_DEFINITIONS:?"Missing DEFINITIONS"}' ..." \
         && setupCoreFunctionality "${_DEFINITIONS:?"Missing DEFINITIONS"}" \

@@ -68,16 +68,34 @@ function cloneOrPull {
     return 1
 }
 
+function printRepository(){
+    local _FOLDER _CONFIGURED_REPOSITORY _SUGGESTED_REPOSITORY
+    _FOLDER="${1:?"Missing first parameter FOLDER"}"
+    _CONFIGURED_REPOSITORY="$(git -C "${_FOLDER:?"Missing FOLDER"}" config --get remote.origin.url 2> /dev/null)"
+    _SUGGESTED_REPOSITORY="${2}"
+    readonly _FOLDER _CONFIGURED_REPOSITORY _SUGGESTED_REPOSITORY
+
+    ! [ -z "${_CONFIGURED_REPOSITORY}" ] \
+        && echo "${_CONFIGURED_REPOSITORY}" \
+        && return 0
+
+    read -e -p "Enter URL to clone Repository: " -i "${_SUGGESTED_REPOSITORY}" _REPOSITORY
+    echo "${_REPOSITORY:?"Missing REPOSITORY: e.g. ssh://git@your.domain.com/cis.git"}" \
+        && return 0
+
+    return 1
+}
+
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addAndCheckGitRepository() {
     local _FOLDER _REPOSITORY
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _REPOSITORY="${2:?"Missing second parameter REPOSITORY: e.g. ssh://git@your.domain.com/cis.git "}"
+    _REPOSITORY="$(printRepository "${_FOLDER}" "${2}")"
     _RIGHTS="${3:?"Missing third parameter RIGHTS: (readonly, writable) "}"
     readonly _FOLDER _REPOSITORY
 
-    checkRemoteRepository "${_FOLDER}" "${_REPOSITORY}" \
+    checkRemoteRepository "${_FOLDER}" "${_REPOSITORY:?"Missing REPOSITORY: e.g. ssh://git@your.domain.com/cis.git"}" \
         && cloneOrPull "${_FOLDER}" "${_REPOSITORY}" \
         && checkPermissions "${_FOLDER}" "${_RIGHTS}" \
         && echo "SUCCESS: The git repository is usable.             ("$(readlink -f ${0})")" \
