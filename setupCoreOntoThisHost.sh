@@ -109,10 +109,10 @@ function getOrSetDomain() {
 }
 
 function getRemoteRepositoryPath() {
-    _RESULT="$(git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" remote show origin | grep -i 'fetch' | xargs -n 1 | grep -i 'ssh://')"
-    _RESULT="${_RESULT%/*}"                        #Removes shortest matching pattern '/*' from the end
-    ! [ -z "${_RESULT}" ] \
-        && echo "${_RESULT}/" \
+    _REPOSITORY="$(git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" config --get remote.origin.url 2> /dev/null | grep -i 'git@')"
+    _PATH="${_REPOSITORY%/*}"                        #Removes shortest matching pattern '/*' from the end
+    ! [ -z "${_PATH}" ] \
+        && echo "${_PATH}/" \
         && return 0
 
     return 1
@@ -126,14 +126,12 @@ function addDefinition(){
 
     [ "$(id -u)" == "0" ] \
         && echo "Running setup as 'root' trying to add definition repository:" \
-        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" readonly \
         && echo "  - definitions are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
         && echo "Running setup as 'user' trying to add definition repository:" \
-        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" writable \
         && echo "  - definitions are usable, as working copy." \
         && return 0
