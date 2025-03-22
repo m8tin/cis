@@ -126,13 +126,13 @@ function addDefinition(){
 
     [ "$(id -u)" == "0" ] \
         && echo "Running setup as 'root' trying to add definition repository:" \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" readonly \
+        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" readonly "${_REPOSITORY}" \
         && echo "  - definitions are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
         && echo "Running setup as 'user' trying to add definition repository:" \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" "${_REPOSITORY}" writable \
+        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" writable "${_REPOSITORY}" \
         && echo "  - definitions are usable, as working copy." \
         && return 0
 
@@ -148,14 +148,14 @@ function addState() {
     [ "$(id -u)" == "0" ] \
         && echo "Running setup as 'root' trying to add state repository:" \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" "${_REPOSITORY}" writable \
+        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
         && echo "  - states are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
         && echo "Running setup as 'user' trying to add state repository:" \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" "${_REPOSITORY}" writable \
+        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
         && echo "  - states are usable, as working copy." \
         && return 0
 
@@ -208,8 +208,8 @@ function setup() {
         && setupCoreFunctionality "${_DEFINITIONS:?"Missing DEFINITIONS"}" \
         && return 0
 
-    echo "FAIL: setup is incomplete:                         ("$(readlink -f ${0})")"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: setup is incomplete:                         ("$(readlink -f ${0})")" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 

@@ -196,8 +196,8 @@ function ensureUsageOfDefinitions() {
         && echo "- '${_DEFINED_FULLFILE}'" \
         && return 0
 
-    echo "FAIL: The definition could not be ensured:         ("$(readlink -f ${0})")"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: The definition could not be ensured:         ("$(readlink -f ${0})")" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 

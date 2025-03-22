@@ -29,9 +29,9 @@ function addNormalUser() {
         && echo "  - existing home directories were taken over" \
         && return 0
 
-    echo "FAIL: The user could not be created:               ("$(readlink -f ${0})")"
-    echo "  - '${_USER}'"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: The user could not be created:               ("$(readlink -f ${0})")" >&2
+    echo "  - '${_USER}'" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 

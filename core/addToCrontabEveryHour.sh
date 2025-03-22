@@ -41,9 +41,9 @@ function addToCrontabEveryHour() {
         && echo "  - '${_STRING}'" \
         && return 0
 
-    echo "FAIL: Entry could not be registered to crontab:    ("$(readlink -f ${0})")"
-    echo "  - '${_STRING:?"Missing CRON_STRING"}'"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: Entry could not be registered to crontab:    ("$(readlink -f ${0})")" >&2
+    echo "  - '${_STRING:?"Missing CRON_STRING"}'" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 

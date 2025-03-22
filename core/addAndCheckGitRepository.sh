@@ -75,11 +75,11 @@ function printRepository(){
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addAndCheckGitRepository() {
-    local _FOLDER _REPOSITORY
+    local _FOLDER _REPOSITORY _RIGHTS
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _REPOSITORY="$(printRepository "${_FOLDER}" "${2}")"
-    _RIGHTS="${3:?"Missing third parameter RIGHTS: (readonly, writable) "}"
-    readonly _FOLDER _REPOSITORY
+    _RIGHTS="${2:?"Missing third parameter RIGHTS: (readonly, writable) "}"
+    _REPOSITORY="$(printRepository "${_FOLDER}" "${3}")"
+    readonly _FOLDER _REPOSITORY _RIGHTS
 
     echo \
         && cloneOrPull "${_FOLDER}" "${_REPOSITORY:?"Missing REPOSITORY: e.g. ssh://git@your.domain.com/cis.git"}" \

@@ -44,9 +44,9 @@ function prepareFolder() {
         && echo "  - '${_SSH_FOLDER}'" \
         && return 0
 
-    echo "FAIL: The ssh folder could not be prepared:        ("$(readlink -f ${0})")"
-    echo "  - '${_SSH_FOLDER}'"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: The ssh folder could not be prepared:        ("$(readlink -f ${0})")" >&2
+    echo "  - '${_SSH_FOLDER}'" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 
