@@ -26,10 +26,10 @@ function checkViaHTTPS() {
 }
 
 function checkOrStartSSHMaster() {
-    timeout --preserve-status 1 "ssh -O check -S ${_SOCKET} ${_REMOTE_USER}@${_REMOTE_HOST}" &> /dev/null \
+    timeout --preserve-status 1 "ssh -O check -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOST}" &> /dev/null \
         && return 0
 
-    ssh -O stop -S ${_SOCKET} ${_REMOTE_USER}@${_REMOTE_HOST} &> /dev/null
+    ssh -O stop -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOST} &> /dev/null
     ssh -o ControlMaster=auto \
         -o ControlPath=${_SOCKET} \
         -o ControlPersist=65 \
@@ -51,7 +51,7 @@ function checkViaSSH() {
     checkOrStartSSHMaster \
         || return 1
 
-    _RESULT=$(ssh -S ${_SOCKET} ${_REMOTE_USER}@${_REMOTE_HOST} 'systemctl status nginx.service' | grep -E 'Active:.*\(running\)' | cut -d';' -f2)
+    _RESULT=$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOST} 'systemctl status nginx.service' | grep -E 'Active:.*\(running\)' | cut -d';' -f2)
     ! [ -z "${_RESULT}" ] && echo "INFO#UPTIME:${_RESULT}" || echo "FAIL"
 }
 
