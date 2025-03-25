@@ -1,22 +1,38 @@
 #!/bin/bash
 
+# Folders always ends with an tailing '/'
+_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
+_SCRIPT_PATH="$(dirname ${_SCRIPT:?"Missing SCRIPT"} 2> /dev/null)/"
+_CIS_ROOT="$(dirname $(dirname ${_SCRIPT_PATH:?"Missing SCRIPT_PATH"} 2> /dev/null) 2> /dev/null)/"
+_CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
+_CURRENT_DOMAIN="$("${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}printOwnDomain.sh")"
+_DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_CURRENT_DOMAIN:?"Missing CURRENT_DOMAIN"}/"
+
+_ALL_CHECKS="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/host/all/"
+_OWN_CHECKS="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/host/$(hostname -s)/"
+
 
 
 function doChecks(){
     local readonly _TMPDIR="${1:?"doChecks(): Missing parameter TMPDIR:"}"
-    local readonly _COLOR="${2:-"monocrom"}"
 
     local _DATETIME=$(date +%H-%M-%S)
 
     mkdir -p ${_TMPDIR}
     rm ${_TMPDIR}/* > /dev/null 2>&1
 
-    for check in /monitoring/checks/*.on
+    for check in ${_ALL_CHECKS}*.on
     do
         local _CHECK_FILENAME="${check##*/}"
         echo -n "${_CHECK_FILENAME%%.on}?" > "${_TMPDIR}/${_CHECK_FILENAME}"
         timeout -k 10s 20s bash ${check} >> "${_TMPDIR}/${_CHECK_FILENAME}" 2> /dev/null || echo "TIMEOUT#Timeout" >> "${_TMPDIR}/${_CHECK_FILENAME}" &
     done
+#    for check in ${_OWN_CHECKS}*.on
+#    do
+#        local _CHECK_FILENAME="${check##*/}"
+#        echo -n "${_CHECK_FILENAME%%.on}?" > "${_TMPDIR}/${_CHECK_FILENAME}"
+#        timeout -k 10s 20s bash ${check} >> "${_TMPDIR}/${_CHECK_FILENAME}" 2> /dev/null || echo "TIMEOUT#Timeout" >> "${_TMPDIR}/${_CHECK_FILENAME}" &
+#    done
     wait
 
     local _FAILED=0
@@ -27,18 +43,7 @@ function doChecks(){
         cat "${resultFile}"
         grep -q "FAIL" ${resultFile} && _FAILED=$(expr ${_FAILED} + 1)
     done
-
-    if [ "${_COLOR}" == "color" ]; then
-        #color is for console-output
-        echo "-----------------------"
-        if [ ${_FAILED} -ne 0 ]; then
-            echo "MISSED?${_FAILED}#${_DATETIME}"
-        else
-            echo "MISSED?${_FAILED}#${_DATETIME}"
-        fi
-    else
-        echo "MISSED?${_FAILED}#${_DATETIME}"
-    fi
+    echo "MISSED?${_FAILED}#${_DATETIME}"
 
     rm -r ${_TMPDIR} > /dev/null 2>&1
     return 0
@@ -59,9 +64,11 @@ function usage(){
 main(){
     case "${1:-""}" in
         all)
-            printf "Checks werden ausgeführt..." \
+            echo "Checks werden ausgeführt..." \
+                && echo \
                 && doChecks "/tmp/checks" color \
-                && printf "Success" \
+                && echo \
+                && echo "Success" \
                 && return 0
             ;;
         auto)
@@ -74,7 +81,7 @@ main(){
             ;;
 		*)
             [ "${1:+isset}" == "isset" ] \
-                && printf "Parameter '${1}' ist kein gültiger Befehl.\n"
+                && echo "Parameter '${1}' ist kein gültiger Befehl."
             usage
             return 0
             ;;
