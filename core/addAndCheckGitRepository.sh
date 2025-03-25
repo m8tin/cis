@@ -6,10 +6,10 @@
 
 
 function checkPermissions(){
-    local _FOLDER _REPOSITORY
+    local _FOLDER _RIGHTS
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
     _RIGHTS="${2:?"Missing second parameter RIGHTS"}"
-    readonly _FOLDER _REPOSITORY
+    readonly _FOLDER _RIGHTS
 
     [ "${_RIGHTS}" == "readonly" ] \
         && [ -d "${_FOLDER}/.git" ] \
@@ -77,7 +77,7 @@ function printRepository(){
 function addAndCheckGitRepository() {
     local _FOLDER _REPOSITORY _RIGHTS
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _RIGHTS="${2:?"Missing third parameter RIGHTS: (readonly, writable) "}"
+    _RIGHTS="${2:?"Missing second parameter RIGHTS: (readonly, writable) "}"
     _REPOSITORY="$(printRepository "${_FOLDER}" "${3}")"
     readonly _FOLDER _REPOSITORY _RIGHTS
 
