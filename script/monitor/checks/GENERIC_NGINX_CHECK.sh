@@ -1,6 +1,6 @@
 #!/bin/bash
 
-_REMOTE_HOST="${1:?"FQDN of server missing"}"
+_REMOTE_HOST="${1:?"FQDN of server missing: e.g. host.example.net[:port]"}"
 _REMOTE_PORT="${_REMOTE_HOST}:"
 _REMOTE_PORT="${_REMOTE_PORT#*:}"
 _REMOTE_PORT="${_REMOTE_PORT%%:*}"
