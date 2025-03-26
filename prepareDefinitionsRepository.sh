@@ -19,9 +19,7 @@ _REOPSITORY_NAME="cis-definition-${_BOOT_DOMAIN}"
 #Generate file 'README.md'
 mkdir -p /tmp/skeleton/definition
 cat << EOF > /tmp/skeleton/definition/README.md
-#$_REOPSITORY_NAME
-
-Central Infrastructure System's definition of domain $_BOOT_DOMAIN
+This repository contains the definitions of the domain “$_BOOT_DOMAIN” by the Core Infrastructure System.
 EOF
 
 

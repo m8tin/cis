@@ -19,9 +19,7 @@ _REOPSITORY_NAME="cis-state-${_BOOT_DOMAIN}"
 #Generate README.md
 mkdir -p /tmp/skeleton/state
 cat << EOF > /tmp/skeleton/state/README.md
-#$_REOPSITORY_NAME
-
-Central Infrastructure System's state of domain $_BOOT_DOMAIN
+This repository contains the states of the domain “$_BOOT_DOMAIN” by the Core Infrastructure System.
 EOF
 
 
