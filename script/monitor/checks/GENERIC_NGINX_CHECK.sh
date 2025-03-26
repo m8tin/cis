@@ -1,7 +1,10 @@
 #!/bin/bash
 
 _REMOTE_HOST="${1:?"FQDN of server missing"}"
-_REMOTE_PORT="${2:-"22"}"
+_REMOTE_PORT="${_REMOTE_HOST}:"
+_REMOTE_PORT="${_REMOTE_PORT#*:}"
+_REMOTE_PORT="${_REMOTE_PORT%%:*}"
+_REMOTE_PORT="${_REMOTE_PORT:-"22"}"
 _REMOTE_USER="monitoring"
 _SOCKET='~/.ssh/%r@%h:%p'
 
