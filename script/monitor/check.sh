@@ -2,14 +2,13 @@
 
 # Folders always ends with an tailing '/'
 _SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_SCRIPT_PATH="$(dirname ${_SCRIPT:?"Missing SCRIPT"} 2> /dev/null)/"
-_CIS_ROOT="$(dirname $(dirname ${_SCRIPT_PATH:?"Missing SCRIPT_PATH"} 2> /dev/null) 2> /dev/null)/"
+_CIS_ROOT="${_SCRIPT%%/script/monitor/*}/"               #Removes longest  matching pattern '/script/monitor/*' from the end
 _CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
 _CURRENT_DOMAIN="$("${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}printOwnDomain.sh")"
 _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_CURRENT_DOMAIN:?"Missing CURRENT_DOMAIN"}/"
 
-_ALL_CHECKS="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/host/all/"
-_OWN_CHECKS="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/host/$(hostname -s)/"
+# Checks for the entire domain
+_DOMAIN_CHECKS="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/checks/"
 
 
 
@@ -21,18 +20,12 @@ function doChecks(){
     mkdir -p ${_TMPDIR}
     rm ${_TMPDIR}/* > /dev/null 2>&1
 
-    for check in ${_ALL_CHECKS}*.on
+    for check in ${_DOMAIN_CHECKS}*.on
     do
         local _CHECK_FILENAME="${check##*/}"
         echo -n "${_CHECK_FILENAME%%.on}?" > "${_TMPDIR}/${_CHECK_FILENAME}"
         timeout -k 10s 20s bash ${check} >> "${_TMPDIR}/${_CHECK_FILENAME}" 2> /dev/null || echo "TIMEOUT#Timeout" >> "${_TMPDIR}/${_CHECK_FILENAME}" &
     done
-#    for check in ${_OWN_CHECKS}*.on
-#    do
-#        local _CHECK_FILENAME="${check##*/}"
-#        echo -n "${_CHECK_FILENAME%%.on}?" > "${_TMPDIR}/${_CHECK_FILENAME}"
-#        timeout -k 10s 20s bash ${check} >> "${_TMPDIR}/${_CHECK_FILENAME}" 2> /dev/null || echo "TIMEOUT#Timeout" >> "${_TMPDIR}/${_CHECK_FILENAME}" &
-#    done
     wait
 
     local _FAILED=0
