@@ -51,6 +51,7 @@ function setupPublicFile() {
 
 echo "Setup the monitoring host that monitors the others ... " \
     && setupPublicFile "check.html" \
+    && setupPublicFile "check.css" \
     && setupPublicFile "logo.png" \
     && exit 0
 
