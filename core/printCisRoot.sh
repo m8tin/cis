@@ -1,8 +1,7 @@
 #!/bin/bash
 
 _SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_SCRIPT_FOLDER="$(dirname ${_SCRIPT:?"Missing SCRIPT"} 2> /dev/null)/"
-_CIS_ROOT="$(dirname ${_SCRIPT_FOLDER:?"Missing SCRIPT_FOLDER"} 2> /dev/null)/"
+_CIS_ROOT="${_SCRIPT%%/core/*}/"               #Removes longest  matching pattern '/core/*' from the end
 
 [ -d "${_CIS_ROOT}" ] \
     && [ -d "${_CIS_ROOT}definitions/" ] \

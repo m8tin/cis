@@ -1,6 +1,9 @@
 #!/bin/bash
 
-_CIS_ROOT="$($(dirname $(readlink -f ${0}))/../../core/printCisRoot.sh)"
+_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
+
+# Folders always ends with an tailing '/'
+_CIS_ROOT="${_SCRIPT%%/script/check/*}/"               #Removes longest  matching pattern '/script/check/*' from the end
 _SCRIPT_PATH="${_CIS_ROOT:?"Missing CIS_ROOT"}script/"
 _OWN_DOMAIN="$(${_CIS_ROOT}core/printOwnDomain.sh)"
 _OWN_DEFINITIONS="${_CIS_ROOT}definitions/${_OWN_DOMAIN:?"Missing OWN_DOMAIN"}/"

@@ -7,8 +7,7 @@
 
 # Folders always ends with an tailing '/'
 _SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_CORE_SCRIPTS="$(dirname ${_SCRIPT:?"Missing SCRIPT"} 2> /dev/null)/"
-_CIS_ROOT="$(dirname ${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"} 2> /dev/null)/"
+_CIS_ROOT="${_SCRIPT%%/core/*}/"               #Removes longest  matching pattern '/core/*' from the end
 _OVERRIDE_DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
 
 # There has to be one dot at least.

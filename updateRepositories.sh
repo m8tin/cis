@@ -22,9 +22,9 @@
 function update_repositories() {
     local _CIS_ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
     _UPDATE_REPOSITORIES="$(readlink -f "${0}" 2> /dev/null)"
+    _CIS_ROOT="${_UPDATE_REPOSITORIES%/updateRepositories.sh}/"               #Removes shortest matching pattern '/updateRepositories.sh' from the end
     _MODE="${1:-"--core"}"
-    _CIS_ROOT="$(dirname ${_UPDATE_REPOSITORIES:?"Missing UPDATE_REPOSITORIES"} 2> /dev/null || echo "/cis")/"
-    _DOMAIN="$(${_CIS_ROOT:?"Missing CIS_ROOT"}/core/printOwnDomain.sh)"
+    _DOMAIN="$(${_CIS_ROOT:?"Missing CIS_ROOT"}core/printOwnDomain.sh)"
     _DEFINITIONS="${_CIS_ROOT}definitions/${_DOMAIN:?"Missing DOMAIN from file: ${_CIS_ROOT}domainOfHostOwner"}/"
     _STATES="${_CIS_ROOT}states/${_DOMAIN:?"Missing DOMAIN from file: ${_CIS_ROOT}domainOfHostOwner"}/"
     readonly _CIS_ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES

@@ -8,7 +8,7 @@
 
 # Folders always ends with an tailing '/'
 _SETUP="$(readlink -f "${0}" 2> /dev/null)"
-_CIS_ROOT="$(dirname ${_SETUP:?"Missing SETUP"} 2> /dev/null)/"
+_CIS_ROOT="${_SETUP%/setupCoreOntoThisHost.sh}/"             #Removes shortest matching pattern '/setupCoreOntoThisHost.sh' from the end
 _CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
 
 

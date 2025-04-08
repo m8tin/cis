@@ -7,8 +7,7 @@
 
 # Folders always ends with an tailing '/'
 _SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_CORE_SCRIPTS="$(dirname ${_SCRIPT:?"Missing SCRIPT"} 2> /dev/null)/"
-_CIS_ROOT="$(dirname ${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"} 2> /dev/null)/"
+_CIS_ROOT="${_SCRIPT%%/core/*}/"               #Removes longest  matching pattern '/core/*' from the end
 
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.

@@ -126,8 +126,8 @@ function ensureUsageOfDefinitions() {
     _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/")"
 
 
-    _CURRENT_FOLDER="$(dirname "${2:?"Missing second parameter CURRENT_FULLFILE"}")"
-    _CURRENT_FOLDER="${_CURRENT_FOLDER%/}/"  #Removes shortest matching pattern '/' from the end
+    _CURRENT_FULLFILE="${2:?"Missing second parameter CURRENT_FULLFILE"}"
+    _CURRENT_FOLDER="${_CURRENT_FULLFILE%/*}/"  #Removes shortest matching pattern '/*' from the end
     ! [ -d "${_CURRENT_FOLDER}" ] \
         && echo "FAIL: The folder cannot be read:                   ("$(readlink -f ${0})")" \
         && echo "  - '${_CURRENT_FOLDER}'" \
