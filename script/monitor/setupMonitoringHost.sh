@@ -17,7 +17,7 @@ _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DO
 
 function printSelectedDefinition() {
     local _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT
-    _FILE_DEFINED_DOMAIN="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor${1:?"Missing CURRENT_FULLFILE"}"
+    _FILE_DEFINED_DOMAIN="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/${1:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_DEFAULT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/monitor/${1:?"Missing CURRENT_FULLFILE"}"
     readonly _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT
 
