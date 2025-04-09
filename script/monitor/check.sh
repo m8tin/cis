@@ -51,6 +51,8 @@ function usage(){
     echo "    Executes all checks."
     echo "- auto <out_file>"
     echo "    Executes quiet all checks and saves the result in the given out_file."
+    echo "      (e.g. add the following line to crontab: '* * * * * /cis/script/monitor/check.sh auto /var/www/html/check.txt'"
+    echo "       to update the file '/var/www/html/check.txt' every minute as 'check.html' needs it.)"
     return 0
 }
 
