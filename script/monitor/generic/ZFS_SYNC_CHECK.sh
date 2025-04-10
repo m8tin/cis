@@ -8,7 +8,6 @@ _DOMAIN="$("${_CIS_ROOT:?"Missing CIS_ROOT"}core/printOwnDomain.sh")"
 _COMPOSITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/compositions/"
 
 _REMOTE_HOST="${1:?"FQDN of server missing: e.g. host.example.net[:port]"}"
-_MODE="${2:-"normal"}"
 _REMOTE_HOSTNAME_FQDN="${_REMOTE_HOST%%:*}"            #Removes longest  matching pattern ':*' from the end
 _REMOTE_HOSTNAME_SHORT="${_REMOTE_HOSTNAME_FQDN%%.*}"  #Removes longest  matching pattern '.*' from the end
 _REMOTE_PORT="${_REMOTE_HOST}:"
@@ -18,6 +17,13 @@ _REMOTE_PORT="${_REMOTE_PORT:-"22"}"
 _REMOTE_USER="monitoring"
 _SOCKET='~/.ssh/%r@%h:%p'
 
+# This is crucial:
+#  - default value for the filter part is extracted from the first parameter (FQDN)
+#  - but you can override this part to to adapt the test during a change of the domain.
+#    (e.g. the short hostname can be an option - or even a better default in the future)
+_ZFS_SNAPSHOT_FILTER="@SYNC_${2:-"${_REMOTE_HOSTNAME_FQDN:?"Missing REMOTE_HOSTNAME_FQDN"}"}"
+
+_MODE="${3:-"normal"}"
 _NOW_UTC_UNIXTIME=$(date -u +%s)
 _DEBUG_PATH="/tmp/monitor/"
 
@@ -49,10 +55,14 @@ function checkSync() {
         && echo "Now: ${_NOW_UTC_UNIXTIME}" > ${_DEBUG_PATH}SECONDS_BEHIND_${_REMOTE_HOSTNAME_FQDN}.txt
 
     ! [ -d "${_COMPOSITIONS:?"Missing COMPOSITIONS"}" ] \
-        && echo "OK#no compositions" \
+        && echo "WARN#no compositions" \
         && return 0
 
-    _SNAPSHOTS="$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} zfs list -po creation,name -r -t snapshot zpool1/persistent | grep -F @SYNC_${_REMOTE_HOSTNAME_FQDN})"
+    [ "${_MODE}" == "debug" ] \
+        && echo "Snapshot filter: ${_ZFS_SNAPSHOT_FILTER}" >> ${_DEBUG_PATH}SECONDS_BEHIND_${_REMOTE_HOSTNAME_FQDN}.txt
+
+    # This retrieves the list of the interesting snapshots including creation timestamp
+    _SNAPSHOTS="$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} zfs list -po creation,name -r -t snapshot zpool1/persistent | grep -F ${_ZFS_SNAPSHOT_FILTER})"
     [ "${_MODE}" == "debug" ] \
         && echo "${_SNAPSHOTS}" > ${_DEBUG_PATH}SNAPSHOTS_${_REMOTE_HOSTNAME_FQDN}.txt
 
