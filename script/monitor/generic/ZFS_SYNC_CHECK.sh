@@ -74,9 +74,10 @@ function checkSync() {
 
     for _COMPOSITION_PATH in ${_COMPOSITIONS}*; do
 
-        # Skip if remote host is not responsible for this container-composition
-        grep -vF "${_REMOTE_HOST}" "${_COMPOSITION_PATH}/zfssync-hosts" &> /dev/null \
-            && continue;
+        # If remote host is found than it is responsible for this container-composition, otherwise skip
+        #   (grep -E "^something" means. Line has to start with "something".)
+        grep -E "^${_REMOTE_HOSTNAME_SHORT}" "${_COMPOSITION_PATH}/zfssync-hosts" &> /dev/null \
+            || continue;
 
         _COMPOSITION_NAME="${_COMPOSITION_PATH##*/}"   #Removes longest  matching pattern '*/' from the begin
         _LAST_SNAPSHOT_UNIXTIME="$(echo "${_SNAPSHOTS}" | grep ${_COMPOSITION_NAME} | tail -n 1 | cut -d' ' -f1)"
