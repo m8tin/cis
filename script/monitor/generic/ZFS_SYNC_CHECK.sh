@@ -42,7 +42,7 @@ function checkOrStartSSHMaster() {
         -f ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} exit &> /dev/null \
         && return 0
 
-    echo "Fail: checkOrStartMaster()"
+    echo "FAIL#SSH connection (setup correct?)"
     return 1
 }
 
