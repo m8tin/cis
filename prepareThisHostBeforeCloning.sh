@@ -33,7 +33,7 @@ function prepareThisHost() {
     ssh-keygen \
         -t ed25519 \
         -f "/root/.ssh/id_ed25519" -q -N "" \
-        -C "$(date +%Y%m%d):root@$(hostname -b)"
+        -C "$(date +%Y%m%d)-root@$(hostname -b)"
 
     cat "/root/.ssh/id_ed25519.pub" \
         && return 0
