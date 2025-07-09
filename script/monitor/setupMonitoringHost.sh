@@ -15,6 +15,20 @@ _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DO
 
 
 
+function checkPreconditions() {
+    [ -d "${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/checks" ] \
+        && return 0
+
+    echo "No folder for your defined checks found: ${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/checks"
+    echo "Please create it and add all your custom monitoring checks there, following this convention: 'NAME_OF_THE_CHECK.on'"
+    echo "A check has to be switched 'on' to be executed, so you can rename a check to 'NAME_OF_THE_CHECK.off' and it will be ignored."
+    echo
+    echo "You can copy the file '/cis/script/monitor/checks/EXAMPLE_CHECK.off' to your check definitions folder and modify it."
+    return 1
+}
+
+
+
 function printSelectedDefinition() {
     local _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT
     _FILE_DEFINED_DOMAIN="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/${1:?"Missing CURRENT_FULLFILE"}"
@@ -50,6 +64,7 @@ function setupPublicFile() {
 }
 
 echo "Setup the monitoring host that monitors the others ... " \
+    && checkPreconditions \
     && setupPublicFile "check.html" \
     && setupPublicFile "check.css" \
     && setupPublicFile "logo.png" \
