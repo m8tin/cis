@@ -17,8 +17,9 @@ ls -lha '/cis/definitions/YOUR.DOMAIN/monitor'
 ```
 
 You can modify the appearance and place your own `check.css` or `logo.png` into the definitions folder:
+
  - /cis/definitions/YOUR.DOMAIN/monitor/check.css
-This feature will use these files with a higher priority.
+ - /cis/definitions/YOUR.DOMAIN/monitor/logo.png
 
 After the change, you must call `/cis/script/monitor/setupMonitoringHost.sh` again,  
 because it creates links in '/var/www/html/' and gives the definitions priority over the script.
