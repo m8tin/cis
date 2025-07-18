@@ -41,7 +41,7 @@ function testPool(){
         && echo "FAIL#CHECK POOL: ${_ZFS_POOL}" \
         && return 0
 
-    echo "OK#Scrubed on ${_RESULT}." \
+    echo "OK#Scrubbed on ${_RESULT}."
     return 0
 }
 
