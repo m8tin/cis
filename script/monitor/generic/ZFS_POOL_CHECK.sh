@@ -14,8 +14,7 @@ _SOCKET='~/.ssh/%r@%h:%p'
 
 
 function checkOrStartSSHMaster() {
-    timeout --preserve-status 1 "ssh -O check -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN}" &> /dev/null \
-        && echo "master checked" \
+    timeout --preserve-status 3 ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} exit 0 &> /dev/null \
         && return 0
 
     ssh -O stop -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} &> /dev/null
