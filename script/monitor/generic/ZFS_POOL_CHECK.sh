@@ -35,7 +35,8 @@ function testPool(){
         || return 1
 
     local _RESPONSE="$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} 'zpool status ${_ZFS_POOL} | grep -F scrub')"
-    local _RESULT=$(echo "${_RESPONSE}" | grep -F 'scrub repaired 0B' | grep -F '0 errors' | cut -d' ' -f13-)
+    local _RESULT=$(echo "${_RESPONSE}" | grep -F 'scrub repaired 0B' | grep -F '0 errors')
+    _RESULT="${_RESULT#*on}"  #Removes shortest matching pattern '*on' from the begin
 
     [ -z "${_RESULT}" ] \
         && echo "FAIL#CHECK POOL: ${_ZFS_POOL}" \
