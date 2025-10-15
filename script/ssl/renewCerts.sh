@@ -344,13 +344,13 @@ function main(){
 
     case "${1}${2}" in
         --dns--own)
-            echo "Renewing own certificates via DNS:"
+            echo "Renewing own certificates at $(date +%F_%T) via DNS:"
             own "dns" "${3}" \
                 && echo "Finished successfully." \
                 && return 0
             ;;
         --http--own)
-            echo "Renewing own certificates via HTTP:"
+            echo "Renewing own certificates at $(date +%F_%T) via HTTP:"
             own "http" "${3}" \
                 && echo \
                 && echo "Checking configuration of nginx and restart the webserver:" \
@@ -359,12 +359,12 @@ function main(){
                 && return 0
             ;;
         --dns--single)
-            echo "Issue single certificate '${3}' via DNS:"
+            echo "Issue single certificate '${3}' at $(date +%F_%T) via DNS:"
             single "dns" "${3}" "${4}" \
                 && return 0
             ;;
         --http--single)
-            echo "Issue single certificate '${3}' via HTTP:"
+            echo "Issue single certificate '${3}' at $(date +%F_%T) via HTTP:"
             single "http" "${3}" "${4}" \
                 && echo \
                 && echo "Checking configuration of nginx and restart the webserver:" \
