@@ -56,6 +56,7 @@ function ensureRepositoryIsAvailableAndWritable() {
 
     [ -d "${_REPOSITORY_FOLDER}.git" ] \
         && echo \
+        && git -C "${_REPOSITORY_FOLDER}" pull &> /dev/null \
         && git -C "${_REPOSITORY_FOLDER}" push --dry-run &> /dev/null \
         && echo "Writable repository found in folder '${_REPOSITORY_FOLDER}'." \
         && return 0
@@ -95,7 +96,7 @@ function prepareThisRuntimeForUsingGitOrIgnore() {
         && return 0
 
     echo "No job will run inside this container because there is an issue."
-    echo "The container keeps running, please check your setup..."
+    echo "The container keeps running for 10min, please check your setup..."
     return 1
 }
 
@@ -117,7 +118,7 @@ echo > /autoACME.log
 
 # Generate SSH keys and setup Git if a repository is specified, on failure keep the container running
 prepareThisRuntimeForUsingGitOrIgnore \
-    || tail -f /autoACME.log
+    || timeout --preserve-status 10m tail -f /autoACME.log
 
 # Ensure acme.sh ist installed
 /renewCerts.sh --setup >> /autoACME.log \
