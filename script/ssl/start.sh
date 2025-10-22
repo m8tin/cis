@@ -1,5 +1,30 @@
 #/bin/bash
 
+function createEnvironmentFile() {
+    local _ENVIRONMENT_FILE _REPOSITORY_FOLDER
+    _ENVIRONMENT_FILE="${ENVIRONMENT_FILE:?"createEnvironmentFile(): Missing global parameter ENVIRONMENT_FILE"}"
+    _REPOSITORY_FOLDER="${AUTOACME_REPOSITORY_FOLDER:?"createEnvironmentFile(): Missing global parameter AUTOACME_REPOSITORY_FOLDER"}"
+    readonly _ENVIRONMENT_FILE _REPOSITORY_FOLDER
+
+    # Save environment for cronjob
+    export -p | grep -v -E "(HOME|OLDPWD|PWD|SHLVL)" > "${_ENVIRONMENT_FILE}"
+
+    [ "${AUTOACME_GIT_REPOSITORY_VIA_SSH}" == "" ] \
+        && echo "declare -x AUTOACME_RESULT_CERTS=\"${AUTOACME_REPOSITORY_FOLDER#/}\"" >> "${_ENVIRONMENT_FILE}" \
+        && echo "SUCCESS: saved environment (without git) into file '${_ENVIRONMENT_FILE}'." \
+        && return 0
+
+    echo "declare -x AUTOACME_RESULT_CERTS=\"${AUTOACME_REPOSITORY_FOLDER}${AUTOACME_PATH_IN_GIT_REPOSITORY#/}\"" >> "${_ENVIRONMENT_FILE}" \
+        && echo "SUCCESS: saved environment (with git) into file '${_ENVIRONMENT_FILE}'." \
+        && return 0
+
+    echo
+    echo "FAILED: something went wrong during the creation of the environment file: '${_ENVIRONMENT_FILE}'..."
+    echo "        This file is mandantory to use 'renewCerts.sh' with cron."
+    echo
+    return 1
+}
+
 function ensureThereAreSSHKeys() {
     grep -F 'ssh' "/root/.ssh/id_ed25519.pub" &> /dev/null \
         && echo "SUCCESS: ssh-keys found, printing public key:" \
@@ -81,6 +106,9 @@ function ensureRepositoryIsAvailableAndWritable() {
 }
 
 function prepareThisRuntimeForUsingGitOrIgnore() {
+    createEnvironmentFile \
+        || return 1
+
     [ "${AUTOACME_GIT_REPOSITORY_VIA_SSH}" == "" ] \
         && echo "There is no git repository specified." \
         && echo "To distribute all keys and certificates via a git repository set environment variable:" \
@@ -101,17 +129,13 @@ function prepareThisRuntimeForUsingGitOrIgnore() {
 }
 
 AUTOACME_REPOSITORY_FOLDER="/root/acmeResults/"
+ENVIRONMENT_FILE="/autoACME.env"
 
 echo
 echo '################################################################################'
 echo "# Container started at $(date +%F_%T) on host ${AUTOACME_CONTAINER_HOSTNAME}"
 echo '################################################################################'
 echo
-
-# Save environment for cronjob
-export -p | grep -v -E "(HOME|OLDPWD|PWD|SHLVL)" > "/autoACME.env" \
-    && echo "declare -x AUTOACME_RESULT_CERTS=\"${AUTOACME_REPOSITORY_FOLDER}${AUTOACME_PATH_IN_GIT_REPOSITORY#/}\"" >> "/autoACME.env" \
-    && echo "SUCCESS: saved environment into file '/autoACME.env'."
 
 # Log start and truncate file: /autoACME.log
 echo > /autoACME.log

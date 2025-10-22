@@ -290,7 +290,7 @@ function setup(){
     popd > /dev/null 2>&1
     isInstalled \
         && echo \
-        && echo 'Now this script can be added into cron-tab (crontab -e),like this e.g.:' \
+        && echo 'Now this script can be added into cron-tab (crontab -e), like this e.g.:' \
         && echo \
         && echo '# Each day at 6:00am renew certificates:' \
         && echo '0 6 * * * /renewCerts.sh --http --own > /var/log/renewCerts.sh.log 2>&1' \
