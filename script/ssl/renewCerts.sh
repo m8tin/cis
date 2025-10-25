@@ -171,26 +171,57 @@ function isExpiringSoon(){
     return 1
 }
 
-function single(){
-    local _ACME_FILE _DOMAIN _DOMAIN_FOLDER _MODE _OPTIONS _RESULT_CERTS
+function printChallengeAliasOption() {
+    local _CHALLENGE_ALIAS_FILE _DOMAIN _MODE _RESULT_CERTS
+    _RESULT_CERTS="${RESULT_CERTS:?"printChallengeAliasOption(): Missing global parameter RESULT_CERTS"}"
+    _MODE="${1:?"printChallengeAliasOption(): Missing first parameter MODE"}"
+    _DOMAIN="${2:?"printChallengeAliasOption: Missing second parameter DOMAIN"}"
+    _CHALLENGE_ALIAS_FILE="${_RESULT_CERTS}_.${_DOMAIN}/challenge-alias"
+    readonly _CHALLENGE_ALIAS_FILE _DOMAIN _MODE _RESULT_CERTS
+
+    # store given challenge-alias and print CHALLENGE_ALIAS_OPTION
+    [ "${_MODE}" = "dnsWithAlias" ] \
+        && echo "${ACME_CHALLENGE_ALIAS:?"printChallengeAliasOption(): Missing global parameter ACME_CHALLENGE_ALIAS"}" > "${_CHALLENGE_ALIAS_FILE}" \
+        && echo " --challenge-alias ${ACME_CHALLENGE_ALIAS}" \
+        && return 0
+
+    # read stored challenge-alias and print CHALLENGE_ALIAS_OPTION
+    [ "${_MODE}" = "dns" ] \
+        && [ -f "${_CHALLENGE_ALIAS_FILE}" ] \
+        && echo " --challenge-alias $(cat "${_CHALLENGE_ALIAS_FILE}")" \
+        && return 0
+
+    return 0
+}
+
+function printDomainFolder() {
+    local _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"single(): Missing global parameter RESULT_CERTS"}"
-    _ACME_FILE="${ACME_FILE:?"single(): Missing global parameter ACME_FILE"}"
 
     _MODE="${1:?"single(): Missing first parameter MODE"}"
     _DOMAIN="${2:?"single(): Missing second parameter DOMAIN"}"
     [ "${_MODE}" = "dns" ] \
         && _DOMAIN_FOLDER="${_RESULT_CERTS}_.${_DOMAIN}"
+    [ "${_MODE}" = "dnsWithAlias" ] \
+        && _DOMAIN_FOLDER="${_RESULT_CERTS}_.${_DOMAIN}"
     [ "${_MODE}" = "http" ] \
         && _DOMAIN_FOLDER="${_RESULT_CERTS}${_DOMAIN}"
+    readonly _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
 
-    # always --force because we check expiring on ourself
-    # _OPTIONS="--issue --force --test"
-    _OPTIONS="--issue --force"
-    [ "${_MODE}" = "dns" ] \
-        && _OPTIONS="${_OPTIONS} --dns ${AUTOACME_DNS_PROVIDER:?"single(): Missing global parameter AUTOACME_DNS_PROVIDER"} --domain *.${_DOMAIN}"
-    [ "${_MODE}" = "http" ] \
-        && _OPTIONS="${_OPTIONS} --webroot /var/www/letsencrypt"
-    readonly _ACME_FILE _DOMAIN _DOMAIN_FOLDER _MODE _OPTIONS _RESULT_CERTS
+    echo "${_DOMAIN_FOLDER}" \
+        && return 0
+
+    return 1
+}
+
+function single(){
+    local _ACME_FILE _DOMAIN _MODE _RESULT_CERTS
+    _RESULT_CERTS="${RESULT_CERTS:?"single(): Missing global parameter RESULT_CERTS"}"
+    _ACME_FILE="${ACME_FILE:?"single(): Missing global parameter ACME_FILE"}"
+
+    _MODE="${1:?"single(): Missing first parameter MODE"}"
+    _DOMAIN="${2:?"single(): Missing second parameter DOMAIN"}"
+    readonly _ACME_FILE _DOMAIN _MODE _RESULT_CERTS
 
     ! [ -f "${_ACME_FILE}" ] \
         && echo "Program 'acme.sh' seams not to be installed. Try run 'renewCerts.sh --setup'." \
@@ -199,6 +230,10 @@ function single(){
     # cancel on broken configuration
     ! checkConfigViaHttp "${_MODE}" "${_DOMAIN}" \
         && return 1
+
+    local _DOMAIN_FOLDER
+    _DOMAIN_FOLDER="$(printDomainFolder "${_MODE}" "${_DOMAIN}")"
+    readonly _DOMAIN_FOLDER
 
     # create folder for results
     ! [ -d "${_DOMAIN_FOLDER}" ] \
@@ -216,12 +251,27 @@ function single(){
     [ -f "${_DOMAIN_FOLDER}/private.key" ] \
         && cp --preserve=mode,ownership "${_DOMAIN_FOLDER}/private.key" "${_DOMAIN_FOLDER}/private.key.bak"
 
+    local _OPTIONS
+    # always --force because we check expiring on ourself
+    # _OPTIONS="--issue --force --test"
+    _OPTIONS="--issue --force"
+    [ "${_MODE}" = "dns" ] \
+        && _OPTIONS="${_OPTIONS}$(printChallengeAliasOption "${_MODE}" "${_DOMAIN}")" \
+        && _OPTIONS="${_OPTIONS} --dns ${AUTOACME_DNS_PROVIDER:?"single(): Missing global parameter AUTOACME_DNS_PROVIDER"} --domain *.${_DOMAIN}"
+    [ "${_MODE}" = "dnsWithAlias" ] \
+        && _OPTIONS="${_OPTIONS}$(printChallengeAliasOption "${_MODE}" "${_DOMAIN}")" \
+        && _OPTIONS="${_OPTIONS} --dns ${AUTOACME_DNS_PROVIDER:?"single(): Missing global parameter AUTOACME_DNS_PROVIDER"} --domain *.${_DOMAIN}"
+    [ "${_MODE}" = "http" ] \
+        && _OPTIONS="${_OPTIONS} --webroot /var/www/letsencrypt"
+    readonly _OPTIONS
+
     ${_ACME_FILE} ${_OPTIONS} \
         --domain "${_DOMAIN}" \
         --server "letsencrypt" \
         --keylength "ec-384" \
         --fullchain-file "${_DOMAIN_FOLDER}/fullchain.crt" \
         --key-file "${_DOMAIN_FOLDER}/private.key" \
+        && openssl pkcs12 -export -in "${_DOMAIN_FOLDER}/fullchain.crt" -inkey "${_DOMAIN_FOLDER}/private.key" -out "${_DOMAIN_FOLDER}/bundle.pkx" -passout pass: \
         && echo "Certificate of domain '${_DOMAIN}' was updated." \
         && tryGitPush "${_DOMAIN}" \
         && return 0
@@ -303,8 +353,11 @@ function setup(){
 function usage(){
     echo
     echo 'Commands:'
-    echo '  (--dns|--http) --own [--force]            : Iterates all domains found in RESULT_CERTS.'
-    echo '  (--dns|--http) --single DOMAIN [--force]  : Issues a certificate for the given domain.'
+    echo '  (--dns|--http)  --own [--force]            : Iterates all domains found in RESULT_CERTS.'
+    echo
+    echo '  --dns           --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode.'
+    echo '  --dns-withAlias --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode with challange alias.'
+    echo '  --http          --single DOMAIN [--force]  : Issues a certificate for the given domain using HTTP mode.'
     echo
     echo 'Current environment:'
     echo "    Full name of this script:                      OWN_FULLNAME='${OWN_FULLNAME}'"
@@ -313,6 +366,7 @@ function usage(){
     echo "    Tar file containing the setup of 'acme.sh':    ACME_TAR_FILE='${ACME_TAR_FILE}'"
     echo "    Setup file of 'acme.sh' after extraction:      ACME_SETUP_FILE='${ACME_SETUP_FILE}'"
     echo "    Full name of the installed script 'acme.sh':   ACME_FILE='${ACME_FILE}'"
+    echo "    'acme.sh' will this alias domain in dns-mode:  ACME_CHALLENGE_ALIAS='${ACME_CHALLENGE_ALIAS}'"
     echo "  Output:"
     echo "    Path were the issued certificate are saved:    RESULT_CERTS='${RESULT_CERTS}'"
 
@@ -327,15 +381,16 @@ function main(){
         && source "/autoACME.env" \
         && echo "Environment '/autoACME.env' loaded."
 
-    local ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
+    local ACME_CHALLENGE_ALIAS ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
     OWN_FULLNAME="$(readlink -e ${0})"
+    ACME_CHALLENGE_ALIAS="${AUTOACME_CHALLENGE_ALIAS:-""}"
     ACME_FILE="/root/.acme.sh/acme.sh"
     ACME_VERSION="acme.sh-3.1.1"
     ACME_SETUP_FILE="/tmp/acme.sh-setup/${ACME_VERSION}/acme.sh"
     ACME_TAR_FILE="${OWN_FULLNAME%/*}/${ACME_VERSION}.tar.gz"
     RESULT_CERTS="${AUTOACME_RESULT_CERTS%/}"    #Removes shortest matching pattern '/' from the end
     RESULT_CERTS="${RESULT_CERTS:-"/etc/nginx/ssl"}/"
-    readonly ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
+    readonly ACME_CHALLENGE_ALIAS ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
 
     local REPOSITORY_URL
     isGitRepository \
@@ -361,6 +416,11 @@ function main(){
         --dns--single)
             echo "Issue single certificate '${3}' at $(date +%F_%T) via DNS:"
             single "dns" "${3}" "${4}" \
+                && return 0
+            ;;
+        --dns-withAlias--single)
+            echo "Issue single certificate '${3}' at $(date +%F_%T) via DNS using a challange alias:"
+            single "dnsWithAlias" "${3}" "${4}" \
                 && return 0
             ;;
         --http--single)

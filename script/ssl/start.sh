@@ -7,22 +7,28 @@ function createEnvironmentFile() {
     readonly _ENVIRONMENT_FILE _REPOSITORY_FOLDER
 
     # Save environment for cronjob
-    export -p | grep -v -E "(HOME|OLDPWD|PWD|SHLVL)" > "${_ENVIRONMENT_FILE}"
+    export -p | grep -v -E "(HOME|OLDPWD|PWD|SHLVL)" > "${_ENVIRONMENT_FILE}" \
+        && echo "SUCCESS: there values were exported into file: '${_ENVIRONMENT_FILE}'" \
+        && echo "  - AUTOACME_CONTAINER_HOSTNAME: ${AUTOACME_CONTAINER_HOSTNAME}" \
+        && echo "  - AUTOACME_DNS_PROVIDER: ${AUTOACME_DNS_PROVIDER}" \
+        && echo "  - AUTOACME_CHALLENGE_ALIAS: ${AUTOACME_CHALLENGE_ALIAS}" \
+        && echo "        (additional the DNS provider specific values were added)" \
+        && echo "  - AUTOACME_GIT_REPOSITORY_VIA_SSH: ${AUTOACME_GIT_REPOSITORY_VIA_SSH}" \
+        && echo "  - AUTOACME_PATH_IN_GIT_REPOSITORY: ${AUTOACME_PATH_IN_GIT_REPOSITORY}"
 
     [ "${AUTOACME_GIT_REPOSITORY_VIA_SSH}" == "" ] \
         && echo "declare -x AUTOACME_RESULT_CERTS=\"${AUTOACME_REPOSITORY_FOLDER#/}\"" >> "${_ENVIRONMENT_FILE}" \
-        && echo "SUCCESS: saved environment (without git) into file '${_ENVIRONMENT_FILE}'." \
-        && return 0
+        && echo "SUCCESS: added AUTOACME_RESULT_CERTS (without git) into file '${_ENVIRONMENT_FILE}'." \
+        && echo "  - AUTOACME_RESULT_CERTS: ${AUTOACME_REPOSITORY_FOLDER#/}" \
+        && echo "        (depends on if there is a git repo and the path for the certs in it)"
 
-    echo "declare -x AUTOACME_RESULT_CERTS=\"${AUTOACME_REPOSITORY_FOLDER}${AUTOACME_PATH_IN_GIT_REPOSITORY#/}\"" >> "${_ENVIRONMENT_FILE}" \
-        && echo "SUCCESS: saved environment (with git) into file '${_ENVIRONMENT_FILE}'." \
-        && return 0
+    ! [ "${AUTOACME_GIT_REPOSITORY_VIA_SSH}" == "" ] \
+        && echo "declare -x AUTOACME_RESULT_CERTS=\"${AUTOACME_REPOSITORY_FOLDER}${AUTOACME_PATH_IN_GIT_REPOSITORY#/}\"" >> "${_ENVIRONMENT_FILE}" \
+        && echo "SUCCESS: added AUTOACME_RESULT_CERTS (with git) into file '${_ENVIRONMENT_FILE}'." \
+        && echo "  - AUTOACME_RESULT_CERTS: ${AUTOACME_REPOSITORY_FOLDER}${AUTOACME_PATH_IN_GIT_REPOSITORY#/}" \
+        && echo "        (depends on if there is a git repo and the path for the certs in it)"
 
-    echo
-    echo "FAILED: something went wrong during the creation of the environment file: '${_ENVIRONMENT_FILE}'..."
-    echo "        This file is mandantory to use 'renewCerts.sh' with cron."
-    echo
-    return 1
+    return 0
 }
 
 function ensureThereAreSSHKeys() {
@@ -118,7 +124,8 @@ function prepareThisRuntimeForUsingGitOrIgnore() {
         && echo \
         && return 0
 
-    ensureThereAreSSHKeys \
+    echo \
+        && ensureThereAreSSHKeys \
         && ensureGitIsInstalled \
         && ensureRepositoryIsAvailableAndWritable \
         && return 0
