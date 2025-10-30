@@ -11,8 +11,6 @@ function createEnvironmentFile() {
         && echo "SUCCESS: there values were exported into file: '${_ENVIRONMENT_FILE}'" \
         && echo "  - AUTOACME_CONTAINER_HOSTNAME: ${AUTOACME_CONTAINER_HOSTNAME}" \
         && echo "  - AUTOACME_DNS_PROVIDER: ${AUTOACME_DNS_PROVIDER}" \
-        && echo "  - AUTOACME_CHALLENGE_ALIAS: ${AUTOACME_CHALLENGE_ALIAS}" \
-        && echo "        (additional the DNS provider specific values were added)" \
         && echo "  - AUTOACME_GIT_REPOSITORY_VIA_SSH: ${AUTOACME_GIT_REPOSITORY_VIA_SSH}" \
         && echo "  - AUTOACME_PATH_IN_GIT_REPOSITORY: ${AUTOACME_PATH_IN_GIT_REPOSITORY}"
 

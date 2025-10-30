@@ -4,23 +4,31 @@
 # curl http://85.183.145.8/.well-known/acme-challenge/test
 # /var/www/letsencrypt/.well-known/acme-challenge
 
-function checkConfigViaHttp(){
-    local _DOMAIN _MODE _LOCAL_FILE _LOCAL_URL _PUBLIC_URL
+function checkConfigViaHttp() {
+    local _DOMAIN _MODE _LOCAL_FILE _LOCAL_FOLDER _LOCAL_URL _PUBLIC_URL
     _MODE="${1:?"checkConfigViaHttp(): Missing first parameter MODE"}"
     _DOMAIN="${2:?"checkConfigViaHttp(): Missing second parameter DOMAIN"}"
-    _LOCAL_FILE="/var/www/letsencrypt/.well-known/acme-challenge/${_DOMAIN}"
+    _LOCAL_FOLDER="/var/www/letsencrypt/.well-known/acme-challenge/"
+    _LOCAL_FILE="${_LOCAL_FOLDER}${_DOMAIN}"
     _LOCAL_URL="http://localhost/.well-known/acme-challenge/${_DOMAIN}"
     _PUBLIC_URL="http://${_DOMAIN}/.well-known/acme-challenge/${_DOMAIN}"
-    readonly _DOMAIN _MODE _LOCAL_FILE _LOCAL_URL _PUBLIC_URL
+    readonly _DOMAIN _MODE _LOCAL_FILE _LOCAL_FOLDER _LOCAL_URL _PUBLIC_URL
 
     # Skip check if mode is not http
     [ "${_MODE}" != "http" ] \
         && return 0
 
+    # Fail because wildcard certificate
+    [ "${_MODE}" == "http" ] \
+        && isWildcardCertificate "${_DOMAIN}" \
+        && echo "Wildcard certificates are not supported via HTTP." \
+        && return 1
+
     _CHECK="Available on $(hostname)@$(date)"
 
     echo -n "Check domain '${_DOMAIN}'..." \
-        && echo "${_CHECK}" > "/var/www/letsencrypt/.well-known/acme-challenge/${_DOMAIN}" \
+        && [ -d "${_LOCAL_FOLDER}" ] \
+        && echo "${_CHECK}" > "${_LOCAL_FILE}" \
         && curl -4s "${_PUBLIC_URL}" | grep -q "${_CHECK}" \
         && echo " Fertig" \
         && return 0
@@ -30,12 +38,12 @@ function checkConfigViaHttp(){
 
     curl -4s "${_LOCAL_URL}" | grep -q "${_CHECK}" \
         && echo " (check DNS first)" \
-        || echo " (check Webserver first)" \
+        || echo " (check Webserver first)"
 
     return 1
 }
 
-function isActive(){
+function isActive() {
     local _DOMAIN _MODE _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"isActive(): Missing global parameter RESULT_CERTS"}"
 
@@ -44,7 +52,7 @@ function isActive(){
     readonly _DOMAIN _MODE _RESULT_CERTS
 
     # If mode is dns the domain is active always
-    [ "${_MODE}" = "dns" ] \
+    [ "${_MODE}" == "dns" ] \
         && return 0
 
     nginx -T 2> /dev/null | grep -q "${_RESULT_CERTS}${_DOMAIN}/fullchain.crt" \
@@ -54,14 +62,28 @@ function isActive(){
     return 1
 }
 
-function isGitRepository(){
+function isGitRepository() {
     git -C "${RESULT_CERTS:?"isGitRepository(): Missing global parameter RESULT_CERTS"}" ls-tree main &> /dev/null \
         && return 0
 
     return 1
 }
 
-function tryGitPush(){
+function isWildcardCertificate() {
+    local _DOMAIN
+    _DOMAIN="${1:?"isWildcardCertificate(): Missing first parameter DOMAIN"}"
+    readonly _DOMAIN
+
+    echo "${_DOMAIN}" | grep -q -F "_." \
+        && return 0
+
+    echo "${_DOMAIN}" | grep -q -F "*." \
+        && return 0
+
+    return 1
+}
+
+function tryGitPush() {
     local _DOMAIN _NOW _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"tryGitPush(): Missing global parameter RESULT_CERTS"}"
 
@@ -88,16 +110,15 @@ function tryGitPush(){
    return 0
 }
 
-function own(){
-    local _DOMAINS _MODE
-    _DOMAINS=("${RESULT_CERTS:?"own(): Missing global parameter RESULT_CERTS"}"/*)
-
-    _MODE="${1:?"own(): Missing first parameter MODE"}"
-    readonly _DOMAINS _MODE
-
-    ! [ -d "${RESULT_CERTS}" ] \
+function own() {
+    ! [ -d "${RESULT_CERTS:?"own(): Missing global parameter RESULT_CERTS"}" ] \
         && echo "Trying to derive domain names from subfolders of '${RESULT_CERTS}', but it is not a folder!" \
         && return 1
+
+    local _DOMAINS _MODE
+    _DOMAINS=("${RESULT_CERTS}"*)
+    _MODE="${1:?"own(): Missing first parameter MODE"}"
+    readonly _DOMAINS _MODE
 
     local _domain
     for _domain in "${_DOMAINS[@]}"; do
@@ -111,16 +132,13 @@ function own(){
 
         case "${_MODE}" in
             dns)
-                # dns and wildcard certifikate => take just them
-                echo "${_domain}" | grep -q -F "_." || continue
-                # cut front '_.'
-                _domain="${_domain#_.}"
+                # dns supports all options
                 ;;
             http)
                 # http and wildcard certifikate => skip
-                echo "${_domain}" | grep -q -F "_." && continue
+                isWildcardCertificate "${_domain}" && continue
                 # ssl on domain inaktiv => skip
-                isActive "{_MODE}" "${_domain}" || continue
+                ! isActive "{_MODE}" "${_domain}" && continue
                 ;;
             *)
                 echo "Unknown mode: ${_MODE}"
@@ -134,79 +152,57 @@ function own(){
     return 0
 }
 
-function isExpiringSoon(){
-    local _DOMAIN _DOMAIN_CERT _ENDDATE _MODE _NOW _REMAINING_DAYS _RESULT_CERTS
-    _RESULT_CERTS="${RESULT_CERTS:?"single(): Missing global parameter RESULT_CERTS"}"
+function continueIssuingCertificate() {
+    local _CERT_FILE_FULLCHAIN _PRETTY_DOMAIN
+    _CERT_FILE_FULLCHAIN="${1:?"continueIssuingCertificate(): Missing first parameter CERT_FILE_FULLCHAIN"}"
+    _PRETTY_DOMAIN="${2:?"continueIssuingCertificate(): Missing second parameter DOMAIN"}"
 
-    _MODE="${1:?"isExpiringSoon(): Missing first parameter MODE"}"
-    _DOMAIN="${2:?"isExpiringSoon(): Missing second parameter DOMAIN"}"
+    # cut front '_.' or '*.' and add '*.' again
+    isWildcardCertificate "${_PRETTY_DOMAIN}" \
+        && _PRETTY_DOMAIN="${_PRETTY_DOMAIN#_.}" \
+        && _PRETTY_DOMAIN="*.${_PRETTY_DOMAIN#\*.}"
 
-    [ "${_MODE}" = "dns" ] \
-        && _DOMAIN_CERT="${_RESULT_CERTS}_.${_DOMAIN}/fullchain.crt"
-    [ "${_MODE}" = "http" ] \
-        && _DOMAIN_CERT="${_RESULT_CERTS}${_DOMAIN}/fullchain.crt"
-    readonly _DOMAIN _DOMAIN_CERT _MODE _RESULT_CERTS
+    readonly _CERT_FILE_FULLCHAIN _PRETTY_DOMAIN
 
     # forced => should be issued
-    [ "${3:-""}" = "--force" ] \
+    [ "${3:-""}" == "--force" ] \
+        && echo "Certificate for domain '${_PRETTY_DOMAIN}' is forced to be issued." \
         && return 0
 
     # no cert => should be issued
-    ! [ -f "${_DOMAIN_CERT}" ] \
+    ! [ -f "${_CERT_FILE_FULLCHAIN}" ] \
+        && echo "No certificate for domain '${_PRETTY_DOMAIN}', so it will be issued." \
         && return 0
 
-    _ENDDATE="$(openssl x509 -enddate -noout -in ${_DOMAIN_CERT} | cut -d= -f2)"
+    local _ENDDATE _NOW _REMAINING_DAYS
+    _ENDDATE="$(openssl x509 -enddate -noout -in ${_CERT_FILE_FULLCHAIN} | cut -d= -f2)"
     _ENDDATE="$(date --date="${_ENDDATE}" --utc +%s)"
 
     _NOW="$(date --date now +%s)"
     _REMAINING_DAYS="$(( (_ENDDATE - _NOW) / 86400 ))"
     readonly _ENDDATE _NOW _REMAINING_DAYS
 
-    echo "Certificate for domain '${_DOMAIN}' will expire in ${_REMAINING_DAYS} days."
-
     # less than 30 days remaining => should be issued
     [ "${_REMAINING_DAYS}" -le "30" ] \
+        && echo "Certificate for domain '${_PRETTY_DOMAIN}' (${_REMAINING_DAYS} days remaining) will be issued." \
         && return 0
 
+    echo "Certificate for domain '${_PRETTY_DOMAIN}' (${_REMAINING_DAYS} days remaining) will be skipped."
     return 1
 }
 
-function printChallengeAliasOption() {
-    local _CHALLENGE_ALIAS_FILE _DOMAIN _MODE _RESULT_CERTS
-    _RESULT_CERTS="${RESULT_CERTS:?"printChallengeAliasOption(): Missing global parameter RESULT_CERTS"}"
-    _MODE="${1:?"printChallengeAliasOption(): Missing first parameter MODE"}"
-    _DOMAIN="${2:?"printChallengeAliasOption: Missing second parameter DOMAIN"}"
-    _CHALLENGE_ALIAS_FILE="${_RESULT_CERTS}_.${_DOMAIN}/challenge-alias"
-    readonly _CHALLENGE_ALIAS_FILE _DOMAIN _MODE _RESULT_CERTS
+function printFullDomainFolder() {
+    local _DOMAIN _DOMAIN_FOLDER _RESULT_CERTS
+    _RESULT_CERTS="${RESULT_CERTS:?"printFullDomainFolder(): Missing global parameter RESULT_CERTS"}"
+    _DOMAIN="${1:?"printFullDomainFolder(): Missing first parameter DOMAIN"}"
 
-    # store given challenge-alias and print CHALLENGE_ALIAS_OPTION
-    [ "${_MODE}" = "dnsWithAlias" ] \
-        && echo "${ACME_CHALLENGE_ALIAS:?"printChallengeAliasOption(): Missing global parameter ACME_CHALLENGE_ALIAS"}" > "${_CHALLENGE_ALIAS_FILE}" \
-        && echo " --challenge-alias ${ACME_CHALLENGE_ALIAS}" \
-        && return 0
+    # cut front '*.' or '_.' and add '_.' again
+    isWildcardCertificate "${_DOMAIN}" \
+        && _DOMAIN="${_DOMAIN#\*.}" \
+        && _DOMAIN="_.${_DOMAIN#_.}"
 
-    # read stored challenge-alias and print CHALLENGE_ALIAS_OPTION
-    [ "${_MODE}" = "dns" ] \
-        && [ -f "${_CHALLENGE_ALIAS_FILE}" ] \
-        && echo " --challenge-alias $(cat "${_CHALLENGE_ALIAS_FILE}")" \
-        && return 0
-
-    return 0
-}
-
-function printDomainFolder() {
-    local _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
-    _RESULT_CERTS="${RESULT_CERTS:?"single(): Missing global parameter RESULT_CERTS"}"
-
-    _MODE="${1:?"single(): Missing first parameter MODE"}"
-    _DOMAIN="${2:?"single(): Missing second parameter DOMAIN"}"
-    [ "${_MODE}" = "dns" ] \
-        && _DOMAIN_FOLDER="${_RESULT_CERTS}_.${_DOMAIN}"
-    [ "${_MODE}" = "dnsWithAlias" ] \
-        && _DOMAIN_FOLDER="${_RESULT_CERTS}_.${_DOMAIN}"
-    [ "${_MODE}" = "http" ] \
-        && _DOMAIN_FOLDER="${_RESULT_CERTS}${_DOMAIN}"
-    readonly _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
+    _DOMAIN_FOLDER="${_RESULT_CERTS}${_DOMAIN}/"
+    readonly _DOMAIN _DOMAIN_FOLDER _RESULT_CERTS
 
     echo "${_DOMAIN_FOLDER}" \
         && return 0
@@ -214,14 +210,71 @@ function printDomainFolder() {
     return 1
 }
 
-function single(){
-    local _ACME_FILE _DOMAIN _MODE _RESULT_CERTS
+function prepareFullDomainFolder() {
+    local _DOMAIN _DOMAIN_FOLDER
+    _DOMAIN="${1:?"prepareFullDomainFolder(): Missing first parameter DOMAIN"}"
+    _DOMAIN_FOLDER="$(printFullDomainFolder "${_DOMAIN}")"
+    readonly _DOMAIN _DOMAIN_FOLDER
+
+    [ -d "${_DOMAIN_FOLDER}" ] \
+        && return 0
+
+    # create folder for results
+    echo -n "Creating folder '${_DOMAIN_FOLDER}'... " \
+        && mkdir -p "${_DOMAIN_FOLDER}" \
+        && echo "Done"
+
+    [ -d "${_DOMAIN_FOLDER}" ] \
+        && return 0
+
+    return 1
+}
+
+function prepareAndCheckAliasDomain() {
+    local _ALIAS_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _TRIMMED_DOMAIN
+    _DOMAIN="${1:?"prepareAndCheckAliasDomain(): Missing first parameter DOMAIN"}"
+    _ALIAS_DOMAIN="${2:?"prepareAndCheckAliasDomain(): Missing second parameter ALIAS_DOMAIN"}"
+    _DOMAIN_FOLDER="$(printFullDomainFolder "${_DOMAIN}")"
+    _CHALLENGE_ALIAS_DOMAIN_FILE="${_DOMAIN_FOLDER}challenge-alias-domain"
+
+    # cut front '_.' or '*.'
+    _TRIMMED_DOMAIN="${_DOMAIN#_.}" \
+        && _TRIMMED_DOMAIN="${_TRIMMED_DOMAIN#\*.}"
+    readonly _ALIAS_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _TRIMMED_DOMAIN
+
+    [ -d "${_DOMAIN_FOLDER}" ] \
+        && [ "$(dig +short _acme-challenge.${_TRIMMED_DOMAIN} CNAME)" == "_acme-challenge.${_ALIAS_DOMAIN}." ] \
+        && echo "${_ALIAS_DOMAIN}" > "${_CHALLENGE_ALIAS_DOMAIN_FILE}" \
+        && echo "SUCCESS: alias domain '${_ALIAS_DOMAIN}' is used when issuing certificates for '${_TRIMMED_DOMAIN}' via DNS." \
+        && return 0
+
+    echo "FAILED: unable to use alias domain '${_ALIAS_DOMAIN}' to issue certificates for '${_TRIMMED_DOMAIN}'."
+    echo "        You have to configure your domain '${_TRIMMED_DOMAIN}' first before you can use the alias domain as proof."
+    echo "        So check if there is a CNAME entry '_acme-challenge.${_TRIMMED_DOMAIN}' pointing to:"
+    echo "          - '_acme-challenge.${_ALIAS_DOMAIN}'"
+    return 1
+}
+
+function single() {
+    local _ACME_FILE _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"single(): Missing global parameter RESULT_CERTS"}"
     _ACME_FILE="${ACME_FILE:?"single(): Missing global parameter ACME_FILE"}"
 
     _MODE="${1:?"single(): Missing first parameter MODE"}"
     _DOMAIN="${2:?"single(): Missing second parameter DOMAIN"}"
-    readonly _ACME_FILE _DOMAIN _MODE _RESULT_CERTS
+    _DOMAIN_FOLDER="$(printFullDomainFolder "${_DOMAIN}")"
+    _CHALLENGE_ALIAS_DOMAIN_FILE="${_DOMAIN_FOLDER}challenge-alias-domain"
+    readonly _ACME_FILE _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
+
+    local _PRETTY_DOMAIN _TRIMMED_DOMAIN
+    # cut front '_.' or '*.'
+    _TRIMMED_DOMAIN="${_DOMAIN#_.}" \
+        && _TRIMMED_DOMAIN="${_TRIMMED_DOMAIN#\*.}"
+
+    _PRETTY_DOMAIN="${_TRIMMED_DOMAIN}"
+    isWildcardCertificate "${_DOMAIN}" \
+        && _PRETTY_DOMAIN="*.${_TRIMMED_DOMAIN}"
+    readonly _PRETTY_DOMAIN _TRIMMED_DOMAIN
 
     ! [ -f "${_ACME_FILE}" ] \
         && echo "Program 'acme.sh' seams not to be installed. Try run 'renewCerts.sh --setup'." \
@@ -231,56 +284,53 @@ function single(){
     ! checkConfigViaHttp "${_MODE}" "${_DOMAIN}" \
         && return 1
 
-    local _DOMAIN_FOLDER
-    _DOMAIN_FOLDER="$(printDomainFolder "${_MODE}" "${_DOMAIN}")"
-    readonly _DOMAIN_FOLDER
-
-    # create folder for results
+    # cancel if folder is not prepared
     ! [ -d "${_DOMAIN_FOLDER}" ] \
-	&& echo -n "Creating folder '${_DOMAIN_FOLDER}'... " \
-        && mkdir -p "${_DOMAIN_FOLDER}" \
-        && echo "Done"
+	    && echo "Certificate of domain '${_PRETTY_DOMAIN}' skipped because of missing folder:" \
+        && echo "  - '${_DOMAIN_FOLDER}'" \
+        && return 1
 
     # check enddate if third parameter is not --force
-    ! isExpiringSoon "${_MODE}" "${_DOMAIN}" "${3:-""}" \
+    ! continueIssuingCertificate "${_DOMAIN_FOLDER}fullchain.crt" "${_DOMAIN}" "${3:-""}" \
         && return 0
 
     # backup the keys
-    [ -f "${_DOMAIN_FOLDER}/fullchain.crt" ] \
-        && cp "${_DOMAIN_FOLDER}/fullchain.crt" "${_DOMAIN_FOLDER}/fullchain.crt.bak"
-    [ -f "${_DOMAIN_FOLDER}/private.key" ] \
-        && cp --preserve=mode,ownership "${_DOMAIN_FOLDER}/private.key" "${_DOMAIN_FOLDER}/private.key.bak"
+    [ -f "${_DOMAIN_FOLDER}fullchain.crt" ] \
+        && cp "${_DOMAIN_FOLDER}fullchain.crt" "${_DOMAIN_FOLDER}fullchain.crt.bak"
+    [ -f "${_DOMAIN_FOLDER}private.key" ] \
+        && cp --preserve=mode,ownership "${_DOMAIN_FOLDER}private.key" "${_DOMAIN_FOLDER}private.key.bak"
 
     local _OPTIONS
     # always --force because we check expiring on ourself
     # _OPTIONS="--issue --force --test"
     _OPTIONS="--issue --force"
-    [ "${_MODE}" = "dns" ] \
-        && _OPTIONS="${_OPTIONS}$(printChallengeAliasOption "${_MODE}" "${_DOMAIN}")" \
-        && _OPTIONS="${_OPTIONS} --dns ${AUTOACME_DNS_PROVIDER:?"single(): Missing global parameter AUTOACME_DNS_PROVIDER"} --domain *.${_DOMAIN}"
-    [ "${_MODE}" = "dnsWithAlias" ] \
-        && _OPTIONS="${_OPTIONS}$(printChallengeAliasOption "${_MODE}" "${_DOMAIN}")" \
-        && _OPTIONS="${_OPTIONS} --dns ${AUTOACME_DNS_PROVIDER:?"single(): Missing global parameter AUTOACME_DNS_PROVIDER"} --domain *.${_DOMAIN}"
-    [ "${_MODE}" = "http" ] \
-        && _OPTIONS="${_OPTIONS} --webroot /var/www/letsencrypt"
+    if [ "${_MODE}" == "dns" ]; then
+        _OPTIONS="${_OPTIONS} --dns ${AUTOACME_DNS_PROVIDER:?"single(): Missing global parameter AUTOACME_DNS_PROVIDER"}"
+        [ -f "${_CHALLENGE_ALIAS_DOMAIN_FILE}" ] \
+            && _OPTIONS="${_OPTIONS} --challenge-alias $(cat "${_CHALLENGE_ALIAS_DOMAIN_FILE}")"
+        isWildcardCertificate "${_DOMAIN}" \
+            && _OPTIONS="${_OPTIONS} --domain ${_PRETTY_DOMAIN}"
+    elif [ "${_MODE}" == "http" ]; then
+        _OPTIONS="${_OPTIONS} --webroot /var/www/letsencrypt"
+    fi
     readonly _OPTIONS
 
     ${_ACME_FILE} ${_OPTIONS} \
-        --domain "${_DOMAIN}" \
+        --domain "${_TRIMMED_DOMAIN}" \
         --server "letsencrypt" \
         --keylength "ec-384" \
-        --fullchain-file "${_DOMAIN_FOLDER}/fullchain.crt" \
-        --key-file "${_DOMAIN_FOLDER}/private.key" \
-        && openssl pkcs12 -export -in "${_DOMAIN_FOLDER}/fullchain.crt" -inkey "${_DOMAIN_FOLDER}/private.key" -out "${_DOMAIN_FOLDER}/bundle.pkx" -passout pass: \
-        && echo "Certificate of domain '${_DOMAIN}' was updated." \
-        && tryGitPush "${_DOMAIN}" \
+        --fullchain-file "${_DOMAIN_FOLDER}fullchain.crt" \
+        --key-file "${_DOMAIN_FOLDER}private.key" \
+        && openssl pkcs12 -export -in "${_DOMAIN_FOLDER}fullchain.crt" -inkey "${_DOMAIN_FOLDER}private.key" -out "${_DOMAIN_FOLDER}bundle.pkx" -passout pass: \
+        && echo "Certificate of domain '${_PRETTY_DOMAIN}' was updated." \
+        && tryGitPush "${_PRETTY_DOMAIN}" \
         && return 0
 
-    echo "Certificate of domain '${_DOMAIN}' remains unchanged."
+    echo "Certificate of domain '${_PRETTY_DOMAIN}' remains unchanged."
     return 0
 }
 
-function isInstalled(){
+function isInstalled() {
     local _ACME_FILE
     _ACME_FILE="${ACME_FILE:?"isInstalled(): Missing global parameter ACME_FILE"}"
     readonly _ACME_FILE
@@ -294,7 +344,7 @@ function isInstalled(){
     return 1
 }
 
-function extractTarArchive(){
+function extractTarArchive() {
     local _ACME_SETUP_FILE _ACME_TAR_FILE
     _ACME_SETUP_FILE="${ACME_SETUP_FILE:?"extractTarArchive(): Missing global parameter ACME_SETUP_FILE"}"
     _ACME_TAR_FILE="${ACME_TAR_FILE:?"extractTarArchive(): Missing global parameter ACME_TAR_FILE"}"
@@ -314,7 +364,7 @@ function extractTarArchive(){
     return 1
 }
 
-function setup(){
+function setup() {
     local _ACME_SETUP_FILE
     _ACME_SETUP_FILE="${ACME_SETUP_FILE:?"setup(): Missing global parameter ACME_SETUP_FILE"}"
     readonly _ACME_SETUP_FILE
@@ -322,11 +372,11 @@ function setup(){
     isInstalled \
         && return 0
 
-    ! [ $(id -u) = 0 ] \
+    ! [ $(id -u) == 0 ] \
         && echo "Setup requires execution as user 'root'." \
         && exit 1
 
-    ! [ "$(echo $HOME)" = "/root" ] \
+    ! [ "$(echo $HOME)" == "/root" ] \
         && echo "The setup is executed with 'root' privileges but not in the 'root' user environment." \
         && exit 1
 
@@ -350,14 +400,16 @@ function setup(){
     return 1
 }
 
-function usage(){
+function usage() {
     echo
     echo 'Commands:'
-    echo '  (--dns|--http)  --own [--force]            : Iterates all domains found in RESULT_CERTS.'
+    echo '  --prepare DOMAIN --usingAlias ALIAS-DOMAIN  : Prepares a domain to issue certificate using an alias domain in DNS mode.'
+    echo '                                                    See: https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode'
+    echo '  --dns            --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode.'
+    echo '  --dns-withAlias  --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode with challange alias.'
+    echo '  --http           --single DOMAIN [--force]  : Issues a certificate for the given domain using HTTP mode.'
     echo
-    echo '  --dns           --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode.'
-    echo '  --dns-withAlias --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode with challange alias.'
-    echo '  --http          --single DOMAIN [--force]  : Issues a certificate for the given domain using HTTP mode.'
+    echo ' (--dns|--http)    --own [--force]            : Iterates all domains found in RESULT_CERTS.'
     echo
     echo 'Current environment:'
     echo "    Full name of this script:                      OWN_FULLNAME='${OWN_FULLNAME}'"
@@ -366,71 +418,89 @@ function usage(){
     echo "    Tar file containing the setup of 'acme.sh':    ACME_TAR_FILE='${ACME_TAR_FILE}'"
     echo "    Setup file of 'acme.sh' after extraction:      ACME_SETUP_FILE='${ACME_SETUP_FILE}'"
     echo "    Full name of the installed script 'acme.sh':   ACME_FILE='${ACME_FILE}'"
-    echo "    'acme.sh' will this alias domain in dns-mode:  ACME_CHALLENGE_ALIAS='${ACME_CHALLENGE_ALIAS}'"
     echo "  Output:"
     echo "    Path were the issued certificate are saved:    RESULT_CERTS='${RESULT_CERTS}'"
 
     return 0
 }
 
-function main(){
+function main() {
 
     echo
 
     [ -f "/autoACME.env" ] \
         && source "/autoACME.env" \
-        && echo "Environment '/autoACME.env' loaded."
+        && echo "[$(date)] Environment '/autoACME.env' loaded."
 
-    local ACME_CHALLENGE_ALIAS ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
+    local ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
     OWN_FULLNAME="$(readlink -e ${0})"
-    ACME_CHALLENGE_ALIAS="${AUTOACME_CHALLENGE_ALIAS:-""}"
     ACME_FILE="/root/.acme.sh/acme.sh"
     ACME_VERSION="acme.sh-3.1.1"
     ACME_SETUP_FILE="/tmp/acme.sh-setup/${ACME_VERSION}/acme.sh"
     ACME_TAR_FILE="${OWN_FULLNAME%/*}/${ACME_VERSION}.tar.gz"
     RESULT_CERTS="${AUTOACME_RESULT_CERTS%/}"    #Removes shortest matching pattern '/' from the end
     RESULT_CERTS="${RESULT_CERTS:-"/etc/nginx/ssl"}/"
-    readonly ACME_CHALLENGE_ALIAS ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
+    readonly ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
 
     local REPOSITORY_URL
     isGitRepository \
         && REPOSITORY_URL="$(git -C ${RESULT_CERTS} config --get remote.origin.url)"
     readonly REPOSITORY_URL
 
-    case "${1}${2}" in
-        --dns--own)
-            echo "Renewing own certificates at $(date +%F_%T) via DNS:"
-            own "dns" "${3}" \
-                && echo "Finished successfully." \
-                && return 0
+    case "${1}" in
+        --dns)
+            case "${2}" in
+                --single)
+                    echo "[$(date)] Issue single certificate '${3}' via DNS:" \
+                        && prepareFullDomainFolder "${3}" \
+                        && single "dns" "${3}" "${4}" \
+                        && return 0
+                    ;;
+                --own)
+                    echo "[$(date)] Renewing own certificates via DNS:"
+                    own "dns" "${3}" \
+                        && echo "Finished successfully." \
+                        && return 0
+                    ;;
+            esac
             ;;
-        --http--own)
-            echo "Renewing own certificates at $(date +%F_%T) via HTTP:"
-            own "http" "${3}" \
-                && echo \
-                && echo "Checking configuration of nginx and restart the webserver:" \
-                && echo "==========================================================" \
-                && nginx -t && systemctl reload nginx \
-                && return 0
+        --http)
+            case "${2}" in
+                --single)
+                    echo "[$(date)] Issue single certificate '${3}' via HTTP:" \
+                        && prepareFullDomainFolder "${3}" \
+                        && single "http" "${3}" "${4}" \
+                        && echo \
+                        && echo "Checking configuration of nginx and restart the webserver:" \
+                        && echo "==========================================================" \
+                        && nginx -t && systemctl reload nginx \
+                        && return 0
+                    ;;
+                --own)
+                    echo "[$(date)] Renewing own certificates via HTTP:" \
+                        && own "http" "${3}" \
+                        && echo \
+                        && echo "Checking configuration of nginx and restart the webserver:" \
+                        && echo "==========================================================" \
+                        && nginx -t && systemctl reload nginx \
+                        && return 0
+                    ;;
+            esac
             ;;
-        --dns--single)
-            echo "Issue single certificate '${3}' at $(date +%F_%T) via DNS:"
-            single "dns" "${3}" "${4}" \
-                && return 0
-            ;;
-        --dns-withAlias--single)
-            echo "Issue single certificate '${3}' at $(date +%F_%T) via DNS using a challange alias:"
-            single "dnsWithAlias" "${3}" "${4}" \
-                && return 0
-            ;;
-        --http--single)
-            echo "Issue single certificate '${3}' at $(date +%F_%T) via HTTP:"
-            single "http" "${3}" "${4}" \
-                && echo \
-                && echo "Checking configuration of nginx and restart the webserver:" \
-                && echo "==========================================================" \
-                && nginx -t && systemctl reload nginx \
-                && return 0
+        --prepare)
+            case "${3}" in
+                --usingAlias)
+                    echo "[$(date)] Prepare domain '${2}' using the alias-domain '${4}' via DNS:" \
+                        && prepareFullDomainFolder "${2}" \
+                        && prepareAndCheckAliasDomain "${2}" "${4}" \
+                        && return 0
+                    ;;
+                *)
+                    echo "Unknown command '${1}' '${2}' '${3}' '${4}'"
+                    usage
+                    return 1
+                    ;;
+            esac
             ;;
         --setup)
             setup \

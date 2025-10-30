@@ -12,8 +12,6 @@ services:
       AUTOACME_GIT_REPOSITORY_VIA_SSH: 'ssh://git@git.your-domain.net/your-repo.git'
       # Optionally you can set a path inside the git repository, requires a repository.
       AUTOACME_PATH_IN_GIT_REPOSITORY: 'hosts/all/etc/ssl/domains/'
-      # Optionally you can define a alias domain, see: https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode
-      AUTOACME_CHALLENGE_ALIAS: 'alias-domain.net'
       # See: https://github.com/acmesh-official/acme.sh/wiki/dnsapi   and search your provider like 'hetzner' e.g. 
       AUTOACME_DNS_PROVIDER: 'dns_hetzner'
       HETZNER_Token: 'your-token'
