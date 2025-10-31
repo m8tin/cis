@@ -5,14 +5,17 @@
 # /var/www/letsencrypt/.well-known/acme-challenge
 
 function checkConfigViaHttp() {
-    local _DOMAIN _MODE _LOCAL_FILE _LOCAL_FOLDER _LOCAL_URL _PUBLIC_URL
+    local _DOMAIN _MODE _LOCAL_FOLDER
     _MODE="${1:?"checkConfigViaHttp(): Missing first parameter MODE"}"
     _DOMAIN="${2:?"checkConfigViaHttp(): Missing second parameter DOMAIN"}"
     _LOCAL_FOLDER="/var/www/letsencrypt/.well-known/acme-challenge/"
+    readonly _DOMAIN _MODE _LOCAL_FOLDER
+
+    local _LOCAL_FILE _LOCAL_URL _PUBLIC_URL
     _LOCAL_FILE="${_LOCAL_FOLDER}${_DOMAIN}"
     _LOCAL_URL="http://localhost/.well-known/acme-challenge/${_DOMAIN}"
     _PUBLIC_URL="http://${_DOMAIN}/.well-known/acme-challenge/${_DOMAIN}"
-    readonly _DOMAIN _MODE _LOCAL_FILE _LOCAL_FOLDER _LOCAL_URL _PUBLIC_URL
+    readonly _LOCAL_FILE _LOCAL_URL _PUBLIC_URL
 
     # Skip check if mode is not http
     [ "${_MODE}" != "http" ] \
@@ -30,11 +33,12 @@ function checkConfigViaHttp() {
         && [ -d "${_LOCAL_FOLDER}" ] \
         && echo "${_CHECK}" > "${_LOCAL_FILE}" \
         && curl -4s "${_PUBLIC_URL}" | grep -q "${_CHECK}" \
-        && echo " Fertig" \
+        && echo " Done" \
         && return 0
 
-    echo "The configuration of domain '${_DOMAIN}' is INCORRECT:" >> /dev/stderr
-    echo -n "  ${_PUBLIC_URL} was not found." >> /dev/stderr
+    echo
+    echo "FAILED: configuration of domain '${_DOMAIN}' is INCORRECT:"
+    echo -n "  ${_PUBLIC_URL} was not found."
 
     curl -4s "${_LOCAL_URL}" | grep -q "${_CHECK}" \
         && echo " (check DNS first)" \
@@ -46,7 +50,6 @@ function checkConfigViaHttp() {
 function isActive() {
     local _DOMAIN _MODE _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"isActive(): Missing global parameter RESULT_CERTS"}"
-
     _MODE="${1:?"isActive(): Missing first parameter MODE"}"
     _DOMAIN="${2:?"isActive(): Missing second parameter DOMAIN"}"
     readonly _DOMAIN _MODE _RESULT_CERTS
@@ -63,7 +66,11 @@ function isActive() {
 }
 
 function isGitRepository() {
-    git -C "${RESULT_CERTS:?"isGitRepository(): Missing global parameter RESULT_CERTS"}" ls-tree main &> /dev/null \
+    local _FOLDER
+    _FOLDER="${1:?"isGitRepository(): Missing first parameter FOLDER"}"
+    readonly _FOLDER
+
+    git -C "${_FOLDER}" ls-tree main &> /dev/null \
         && return 0
 
     return 1
@@ -86,12 +93,11 @@ function isWildcardCertificate() {
 function tryGitPush() {
     local _DOMAIN _NOW _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"tryGitPush(): Missing global parameter RESULT_CERTS"}"
-
     _DOMAIN="${1:?"tryGitPush(): Missing first parameter DOMAIN"}"
     _NOW="$(date +%Y%m%d_%H%M)"
     readonly _DOMAIN _NOW _RESULT_CERTS
 
-    ! isGitRepository \
+    ! isGitRepository "${_RESULT_CERTS}" \
         && echo \
         && echo "Folder '${_RESULT_CERTS}' is not part of a git repository, therefore nothing will be pushed." \
         && return 1
@@ -153,16 +159,14 @@ function own() {
 }
 
 function continueIssuingCertificate() {
-    local _CERT_FILE_FULLCHAIN _PRETTY_DOMAIN
+    local _CERT_FILE_FULLCHAIN _DOMAIN
     _CERT_FILE_FULLCHAIN="${1:?"continueIssuingCertificate(): Missing first parameter CERT_FILE_FULLCHAIN"}"
-    _PRETTY_DOMAIN="${2:?"continueIssuingCertificate(): Missing second parameter DOMAIN"}"
+    _DOMAIN="${2:?"continueIssuingCertificate(): Missing second parameter DOMAIN"}"
+    local _CERT_FILE_FULLCHAIN _DOMAIN
 
-    # cut front '_.' or '*.' and add '*.' again
-    isWildcardCertificate "${_PRETTY_DOMAIN}" \
-        && _PRETTY_DOMAIN="${_PRETTY_DOMAIN#_.}" \
-        && _PRETTY_DOMAIN="*.${_PRETTY_DOMAIN#\*.}"
-
-    readonly _CERT_FILE_FULLCHAIN _PRETTY_DOMAIN
+    local _PRETTY_DOMAIN
+    _PRETTY_DOMAIN="$(printPrettyDomain ${_DOMAIN})"
+    readonly _PRETTY_DOMAIN
 
     # forced => should be issued
     [ "${3:-""}" == "--force" ] \
@@ -191,20 +195,51 @@ function continueIssuingCertificate() {
     return 1
 }
 
+function printBaseDomain() {
+    local _DOMAIN
+    _DOMAIN="${1:?"printBaseDomain(): Missing first parameter DOMAIN"}"
+    readonly _DOMAIN
+
+    local _BASE_DOMAIN
+    # cut front '*.' or '_.'
+    _BASE_DOMAIN="${_DOMAIN#\*.}"
+    _BASE_DOMAIN="${_BASE_DOMAIN#_.}"
+    readonly _BASE_DOMAIN
+
+    echo "${_BASE_DOMAIN}" \
+        && return 0
+
+    return 1
+}
+
+function printPrettyDomain() {
+    local _BASE_DOMAIN _DOMAIN
+    _DOMAIN="${1:?"printPrettyDomain(): Missing first parameter DOMAIN"}"
+    _BASE_DOMAIN="$(printBaseDomain ${_DOMAIN})"
+    readonly _BASE_DOMAIN _DOMAIN
+
+    isWildcardCertificate "${_DOMAIN}" \
+        && echo "*.${_BASE_DOMAIN}" \
+        && return 0
+
+    echo "${_DOMAIN}" \
+        && return 0
+
+    return 1
+}
+
 function printFullDomainFolder() {
-    local _DOMAIN _DOMAIN_FOLDER _RESULT_CERTS
+    local _BASE_DOMAIN _DOMAIN _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"printFullDomainFolder(): Missing global parameter RESULT_CERTS"}"
     _DOMAIN="${1:?"printFullDomainFolder(): Missing first parameter DOMAIN"}"
+    _BASE_DOMAIN="$(printBaseDomain ${_DOMAIN})"
+    readonly _BASE_DOMAIN _DOMAIN _RESULT_CERTS
 
-    # cut front '*.' or '_.' and add '_.' again
     isWildcardCertificate "${_DOMAIN}" \
-        && _DOMAIN="${_DOMAIN#\*.}" \
-        && _DOMAIN="_.${_DOMAIN#_.}"
+        && echo "${_RESULT_CERTS}_.${_BASE_DOMAIN}/" \
+        && return 0
 
-    _DOMAIN_FOLDER="${_RESULT_CERTS}${_DOMAIN}/"
-    readonly _DOMAIN _DOMAIN_FOLDER _RESULT_CERTS
-
-    echo "${_DOMAIN_FOLDER}" \
+    echo "${_RESULT_CERTS}${_DOMAIN}/" \
         && return 0
 
     return 1
@@ -231,50 +266,44 @@ function prepareFullDomainFolder() {
 }
 
 function prepareAndCheckAliasDomain() {
-    local _ALIAS_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _TRIMMED_DOMAIN
+    local _ALIAS_DOMAIN _DOMAIN
     _DOMAIN="${1:?"prepareAndCheckAliasDomain(): Missing first parameter DOMAIN"}"
     _ALIAS_DOMAIN="${2:?"prepareAndCheckAliasDomain(): Missing second parameter ALIAS_DOMAIN"}"
-    _DOMAIN_FOLDER="$(printFullDomainFolder "${_DOMAIN}")"
-    _CHALLENGE_ALIAS_DOMAIN_FILE="${_DOMAIN_FOLDER}challenge-alias-domain"
+    readonly _ALIAS_DOMAIN _DOMAIN
 
-    # cut front '_.' or '*.'
-    _TRIMMED_DOMAIN="${_DOMAIN#_.}" \
-        && _TRIMMED_DOMAIN="${_TRIMMED_DOMAIN#\*.}"
-    readonly _ALIAS_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _TRIMMED_DOMAIN
+    local _BASE_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN_FOLDER
+    _BASE_DOMAIN="$(printBaseDomain ${_DOMAIN})"
+    _DOMAIN_FOLDER="$(printFullDomainFolder ${_DOMAIN})"
+    _CHALLENGE_ALIAS_DOMAIN_FILE="${_DOMAIN_FOLDER}challenge-alias-domain"
+    readonly _BASE_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN_FOLDER
 
     [ -d "${_DOMAIN_FOLDER}" ] \
-        && [ "$(dig +short _acme-challenge.${_TRIMMED_DOMAIN} CNAME)" == "_acme-challenge.${_ALIAS_DOMAIN}." ] \
+        && [ "$(dig +short _acme-challenge.${_BASE_DOMAIN} CNAME)" == "_acme-challenge.${_ALIAS_DOMAIN}." ] \
         && echo "${_ALIAS_DOMAIN}" > "${_CHALLENGE_ALIAS_DOMAIN_FILE}" \
-        && echo "SUCCESS: alias domain '${_ALIAS_DOMAIN}' is used when issuing certificates for '${_TRIMMED_DOMAIN}' via DNS." \
+        && echo "SUCCESS: alias domain '${_ALIAS_DOMAIN}' is used when issuing certificates for '${_BASE_DOMAIN}' via DNS." \
         && return 0
 
-    echo "FAILED: unable to use alias domain '${_ALIAS_DOMAIN}' to issue certificates for '${_TRIMMED_DOMAIN}'."
-    echo "        You have to configure your domain '${_TRIMMED_DOMAIN}' first before you can use the alias domain as proof."
-    echo "        So check if there is a CNAME entry '_acme-challenge.${_TRIMMED_DOMAIN}' pointing to:"
+    echo "FAILED: unable to use alias domain '${_ALIAS_DOMAIN}' to issue certificates for '${_BASE_DOMAIN}'."
+    echo "        You have to configure your domain '${_BASE_DOMAIN}' first before you can use the alias domain as proof."
+    echo "        So check if there is a CNAME entry '_acme-challenge.${_BASE_DOMAIN}' pointing to:"
     echo "          - '_acme-challenge.${_ALIAS_DOMAIN}'"
     return 1
 }
 
 function single() {
-    local _ACME_FILE _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
+    local _ACME_FILE _DOMAIN _MODE _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"single(): Missing global parameter RESULT_CERTS"}"
     _ACME_FILE="${ACME_FILE:?"single(): Missing global parameter ACME_FILE"}"
-
     _MODE="${1:?"single(): Missing first parameter MODE"}"
     _DOMAIN="${2:?"single(): Missing second parameter DOMAIN"}"
-    _DOMAIN_FOLDER="$(printFullDomainFolder "${_DOMAIN}")"
+    readonly _ACME_FILE _DOMAIN _MODE _RESULT_CERTS
+
+    local _BASE_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN_FOLDER _PRETTY_DOMAIN
+    _BASE_DOMAIN="$(printBaseDomain ${_DOMAIN})"
+    _DOMAIN_FOLDER="$(printFullDomainFolder ${_DOMAIN})"
+    _PRETTY_DOMAIN="$(printPrettyDomain ${_DOMAIN})"
     _CHALLENGE_ALIAS_DOMAIN_FILE="${_DOMAIN_FOLDER}challenge-alias-domain"
-    readonly _ACME_FILE _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN _DOMAIN_FOLDER _MODE _RESULT_CERTS
-
-    local _PRETTY_DOMAIN _TRIMMED_DOMAIN
-    # cut front '_.' or '*.'
-    _TRIMMED_DOMAIN="${_DOMAIN#_.}" \
-        && _TRIMMED_DOMAIN="${_TRIMMED_DOMAIN#\*.}"
-
-    _PRETTY_DOMAIN="${_TRIMMED_DOMAIN}"
-    isWildcardCertificate "${_DOMAIN}" \
-        && _PRETTY_DOMAIN="*.${_TRIMMED_DOMAIN}"
-    readonly _PRETTY_DOMAIN _TRIMMED_DOMAIN
+    readonly _BASE_DOMAIN _CHALLENGE_ALIAS_DOMAIN_FILE _DOMAIN_FOLDER _PRETTY_DOMAIN
 
     ! [ -f "${_ACME_FILE}" ] \
         && echo "Program 'acme.sh' seams not to be installed. Try run 'renewCerts.sh --setup'." \
@@ -316,7 +345,7 @@ function single() {
     readonly _OPTIONS
 
     ${_ACME_FILE} ${_OPTIONS} \
-        --domain "${_TRIMMED_DOMAIN}" \
+        --domain "${_BASE_DOMAIN}" \
         --server "letsencrypt" \
         --keylength "ec-384" \
         --fullchain-file "${_DOMAIN_FOLDER}fullchain.crt" \
@@ -432,18 +461,21 @@ function main() {
         && source "/autoACME.env" \
         && echo "[$(date)] Environment '/autoACME.env' loaded."
 
-    local ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
+    local ACME_FILE ACME_VERSION OWN_FULLNAME
     OWN_FULLNAME="$(readlink -e ${0})"
     ACME_FILE="/root/.acme.sh/acme.sh"
     ACME_VERSION="acme.sh-3.1.1"
+    readonly ACME_FILE ACME_VERSION OWN_FULLNAME
+
+    local ACME_SETUP_FILE ACME_TAR_FILE RESULT_CERTS
     ACME_SETUP_FILE="/tmp/acme.sh-setup/${ACME_VERSION}/acme.sh"
     ACME_TAR_FILE="${OWN_FULLNAME%/*}/${ACME_VERSION}.tar.gz"
     RESULT_CERTS="${AUTOACME_RESULT_CERTS%/}"    #Removes shortest matching pattern '/' from the end
     RESULT_CERTS="${RESULT_CERTS:-"/etc/nginx/ssl"}/"
-    readonly ACME_FILE ACME_VERSION ACME_SETUP_FILE ACME_TAR_FILE OWN_FULLNAME RESULT_CERTS
+    readonly ACME_SETUP_FILE ACME_TAR_FILE RESULT_CERTS
 
     local REPOSITORY_URL
-    isGitRepository \
+    isGitRepository "${RESULT_CERTS}" \
         && REPOSITORY_URL="$(git -C ${RESULT_CERTS} config --get remote.origin.url)"
     readonly REPOSITORY_URL
 
