@@ -435,7 +435,6 @@ function usage() {
     echo '  --prepare DOMAIN --usingAlias ALIAS-DOMAIN  : Prepares a domain to issue certificate using an alias domain in DNS mode.'
     echo '                                                    See: https://github.com/acmesh-official/acme.sh/wiki/DNS-alias-mode'
     echo '  --dns            --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode.'
-    echo '  --dns-withAlias  --single DOMAIN [--force]  : Issues a certificate for the given domain using DNS mode with challange alias.'
     echo '  --http           --single DOMAIN [--force]  : Issues a certificate for the given domain using HTTP mode.'
     echo
     echo ' (--dns|--http)    --own [--force]            : Iterates all domains found in RESULT_CERTS.'
