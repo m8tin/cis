@@ -13,16 +13,26 @@
 # -q                         Quite, no output just status codes
 # -F                         Interpret search term as plain text
 function checkUrl() {
-    local _URL
+    local _URL _SEARCH_STRING
     _URL="${1:?"URL of site missing"}"
-    readonly _URL
+    _SEARCH_STRING="${2}"
+    readonly _URL _SEARCH_STRING
 
     local _RESULT
-    _RESULT="$(curl --connect-timeout 10 --max-time 10 --head --no-progress-meter --verbose "${_URL}" 2>&1 | grep -o -E '(expire.*|^HTTP.*200 OK)')"
+    if [ -z "${_SEARCH_STRING}" ]; then
+        _RESULT="$(curl --connect-timeout 10 --max-time 10 --no-progress-meter --verbose "${_URL}" 2>&1 | grep -o -E "(expire.*|HTTP.*200 OK)")"
+    else
+        _RESULT="$(curl --connect-timeout 10 --max-time 10 --no-progress-meter --verbose "${_URL}" 2>&1 | grep -o -E "(expire.*|HTTP.*200 OK|${_SEARCH_STRING})")"
+    fi
     readonly _RESULT
 
     ! echo "${_RESULT}" | grep -q -F '200 OK' \
         && echo "FAIL#Status code 200 not found" \
+        && return 1
+
+    ! [ -z "${_SEARCH_STRING}" ] \
+        && ! echo "${_RESULT}" | grep -q -F "${_SEARCH_STRING}" \
+        && echo "FAIL#Search string not found" \
         && return 1
 
     local _ENDDATE
@@ -49,4 +59,4 @@ function checkUrl() {
 }
 
 #((curl --connect-timeout 10 --max-time 10 -k -s --head --no-progress-meter "${_URL}" | grep -qF '200 OK') && echo OK) || echo FAIL
-checkUrl "${@}" && exit 0 || exit 1
+checkUrl "${1}" "${2}" && exit 0 || exit 1
