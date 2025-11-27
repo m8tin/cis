@@ -20,54 +20,61 @@
 
 
 function update_repositories() {
-    local _ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
+    local _CIS_ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
     _UPDATE_REPOSITORIES="$(readlink -f "${0}" 2> /dev/null)"
-    _MODE="${1:-"all"}"
-    _ROOT="$(dirname ${_UPDATE_REPOSITORIES:?"Missing UPDATE_REPOSITORIES"} 2> /dev/null || echo "/iss")/"
-    _DOMAIN="$(cat ${_ROOT:?"Missing ROOT"}domainOfHostOwner)"
-    _DEFINITIONS="${_ROOT}definitions/${_DOMAIN:?"Missing DOMAIN from file: ${_ROOT}domainOfHostOwner"}/"
-    _STATES="${_ROOT}states/${_DOMAIN:?"Missing DOMAIN from file: ${_ROOT}domainOfHostOwner"}/"
-    readonly _ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
+    _CIS_ROOT="${_UPDATE_REPOSITORIES%/updateRepositories.sh}/"               #Removes shortest matching pattern '/updateRepositories.sh' from the end
+    _MODE="${1:-"--core"}"
+    _DOMAIN="$(${_CIS_ROOT:?"Missing CIS_ROOT"}core/printOwnDomain.sh)"
+    _DEFINITIONS="${_CIS_ROOT}definitions/${_DOMAIN:?"Missing DOMAIN from file: ${_CIS_ROOT}domainOfHostOwner"}/"
+    _STATES="${_CIS_ROOT}states/${_DOMAIN:?"Missing DOMAIN from file: ${_CIS_ROOT}domainOfHostOwner"}/"
+    readonly _CIS_ROOT _DEFINITIONS _DOMAIN _MODE _STATES _UPDATE_REPOSITORIES
 
     [ "${_MODE}" == "--repair" ] \
-        && (git -C "${_ROOT}" reset --hard origin/master; \
-            git -C "${_DEFINITIONS}" reset --hard origin/master; \
-            git -C "${_STATES}" reset --hard origin/master; \
+        && (git -C "${_CIS_ROOT}" reset --hard origin/main; \
+            git -C "${_DEFINITIONS}" reset --hard origin/main; \
+            git -C "${_STATES}" reset --hard origin/main; \
             echo "Run repairs") \
         && return 0
 
     [ "${_MODE}" == "--test" ] \
-        && git -C "${_ROOT}" pull \
+        && git -C "${_CIS_ROOT}" pull \
         && git -C "${_DEFINITIONS}" pull \
         && git -C "${_STATES}" pull \
         && echo "Run in testMode successfully." \
         && return 0
 
     [ "${_MODE}" == "--scripts" ] \
-        && echo "Host $HOSTNAME updating scripts: ${_ROOT} ..." \
-        && (git -C "${_ROOT}" pull &> /dev/null &) \
+        && printf "Host $HOSTNAME updating scripts: ${_CIS_ROOT} ... " \
+        && (git -C "${_CIS_ROOT}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--definitions" ] \
-        && echo "Host ${HOSTNAME} updating definitions: ${_DEFINITIONS} ..." \
-        && (git -C "${_DEFINITIONS}" pull &> /dev/null &) \
+        && echo "Host ${HOSTNAME} updating definitions: ${_DEFINITIONS} ... " \
+        && (git -C "${_DEFINITIONS}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--states" ] \
-        && echo "Host ${HOSTNAME} updating states: ${_STATES} ..." \
-        && (git -C "${_STATES}" pull &> /dev/null &) \
+        && echo "Host ${HOSTNAME} updating states: ${_STATES} ... " \
+        && (git -C "${_STATES}" pull &> /dev/null) \
+        && echo "(done)" \
         && return 0
 
-    echo "Host ${HOSTNAME} updating ${_MODE}:" \
-        && echo "  - ${_ROOT}" \
-        && echo "  - ${_DEFINITIONS}" \
-        && echo "  - ${_STATES}"
-    git -C "${_ROOT}" pull &> /dev/null
-    git -C "${_DEFINITIONS}" pull &> /dev/null
-    git -C "${_STATES}" pull &> /dev/null
+    [ "${_MODE}" == "--core" ] \
+        && echo "Host ${HOSTNAME} updating core including scripts, definitions and states: ${_STATES} ... " \
+        && (git -C "${_CIS_ROOT}" pull &> /dev/null) \
+        && (git -C "${_DEFINITIONS}" pull &> /dev/null) \
+        && (git -C "${_STATES}" pull &> /dev/null) \
+        && echo "(done)" \
+        && return 0
+
+    echo "FAILED: an error occurred during an update."
+    return 1
 }
 
 # sanitizes all parameters
-update_repositories \
-    "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0 || exit 1
+update_repositories "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+    && exit 0
+
+exit 1

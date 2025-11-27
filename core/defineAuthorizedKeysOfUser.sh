@@ -44,24 +44,24 @@ function prepareFolder() {
         && echo "  - '${_SSH_FOLDER}'" \
         && return 0
 
-    echo "FAIL: The ssh folder could not be prepared:        ("$(readlink -f ${0})")"
-    echo "  - '${_SSH_FOLDER}'"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: The ssh folder could not be prepared:        ("$(readlink -f ${0})")" >&2
+    echo "  - '${_SSH_FOLDER}'" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 
 function defineAuthorizedKeysOfUser() {
-    local _ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
+    local _CIS_ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
     _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")"
-    _ROOT="${_DEFINITIONS%%/definitions/*}/"   #Removes longest  matching pattern '/definitions/*' from the end
-    _DOMAIN="${_DEFINITIONS##*/definitions/}"  #Removes longest  matching pattern '*/definitions/' from the begin
-    _DOMAIN="${_DOMAIN%/}"                     #Removes shortest matching pattern '/'              from the end
+    _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
+    _DOMAIN="${_DEFINITIONS##*/definitions/}"     #Removes longest  matching pattern '*/definitions/' from the begin
+    _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
     #Build from components for safety
-    _DEFINITIONS="${_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
+    _DEFINITIONS="${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
 
     _USER="${2:?"Missing second parameter USER"}"
-    _CORE_SCRIPTS="${_ROOT:?"Missing ROOT"}core/"
-    readonly _ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
+    _CORE_SCRIPTS="${_CIS_ROOT:?"Missing ROOT"}core/"
+    readonly _CIS_ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
 
     case "${_USER:?"Missing USER"}" in
         root)
@@ -83,4 +83,6 @@ function defineAuthorizedKeysOfUser() {
 defineAuthorizedKeysOfUser \
     "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0 || exit 1
+    && exit 0
+
+exit 1

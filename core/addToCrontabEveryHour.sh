@@ -5,14 +5,17 @@
 
 
 
+# Folders always ends with an tailing '/'
+_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
+_CIS_ROOT="${_SCRIPT%%/core/*}/"               #Removes longest  matching pattern '/core/*' from the end
+
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addToCrontabEveryHour() {
-    local _ROOT _MINUTE_VALUE _STRING
-    _ROOT="${0%%/core/*}/"                              #Removes longest  matching pattern '/core/*' from the end
+    local _MINUTE_VALUE _STRING
     ! [ -z "${2##*[!0-9]*}" ] && _MINUTE_VALUE=$((${2}%60)) # if second parameter is integer then (minute-value % 60) as safe guard
     _STRING="${_MINUTE_VALUE:?"Missing MINUTE_VALUE"} * * * * ${1:?"Missing first parameter COMMAND"} > /dev/null 2>&1"
-    readonly _ROOT _MINUTE_VALUE _STRING
+    readonly _MINUTE_VALUE _STRING
 
     [ "$(id -u)" == "0" ] \
         && crontab -l | grep -qF "${_STRING:?"Missing CRON_STRING"}" \
@@ -21,11 +24,11 @@ function addToCrontabEveryHour() {
         && return 0
 
     [ "$(id -u)" == "0" ] \
-        && echo "${_ROOT:?"Missing ROOT"}" | grep "home" &> /dev/null \
+        && echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep -F 'home' &> /dev/null \
         && echo "SUCCESS: Although the entry will be skipped:       ("$(readlink -f ${0})")" \
         && echo "  - '${_STRING}'" \
         && echo "  that is because the current environment is:" \
-        && echo "    - ${_ROOT}" \
+        && echo "    - ${_CIS_ROOT}" \
         && return 0
 
     [ "$(id -u)" == "0" ] \
@@ -37,9 +40,9 @@ function addToCrontabEveryHour() {
         && echo "  - '${_STRING}'" \
         && return 0
 
-    echo "FAIL: Entry could not be registered to crontab:    ("$(readlink -f ${0})")"
-    echo "  - '${_STRING:?"Missing CRON_STRING"}'"
-    echo "  - due to an error or insufficient rights."
+    echo "FAIL: Entry could not be registered to crontab:    ("$(readlink -f ${0})")" >&2
+    echo "  - '${_STRING:?"Missing CRON_STRING"}'" >&2
+    echo "  - due to an error or insufficient rights." >&2
     return 1
 }
 
@@ -47,4 +50,6 @@ function addToCrontabEveryHour() {
 addToCrontabEveryHour \
     "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
     "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0 || exit 1
+    && exit 0
+
+exit 1

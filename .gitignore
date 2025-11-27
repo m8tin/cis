@@ -1,0 +1,10 @@
+# Ignore the file '/overrideOwnDomain' because this is per host individually.
+/overrideOwnDomain
+
+# Ignore the subfolders only, because their content are other git repositories.
+# But 'definitions and 'states' should be prepared by cloning this repository.
+/definitions/*/
+/states/*/
+
+# Ignore environment files
+.env
