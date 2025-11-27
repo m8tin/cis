@@ -1,0 +1,122 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Monitoring Dashboard</title>
+    <link rel="stylesheet" href="check.css">
+</head>
+<body>
+    <div id="header">
+        <img src="logo.png"></img>
+        <h1>Monitoring</h1>
+    </div>
+    <div id="content">
+        <div id="checks">
+            <div class="check warn">Loading...</div>
+        </div>
+    </div>
+    <div id="footer">
+        Köln, <span id="datetime"></span>
+    </div>
+
+    <script>
+        var connectionAlive = true;
+
+        function downloadCheckFile(callback) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open('GET', "check.txt", false);
+            xmlHttp.onreadystatechange=function() {
+                if(xmlHttp.readyState==4) {
+                    callback(xmlHttp.responseText);
+                }
+            }
+            try {
+                xmlHttp.send(null);
+                if (xmlHttp.status >= 200 && xmlHttp.status < 304) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (e) {
+                return false;
+            }
+        }
+        function convertToHtml(checkText) {
+            if (!connectionAlive) {
+                return '<div class="fail">CONNECTION FAILED</div>';
+            }
+
+            var html = "";
+            var lines = checkText.split(/\n/);
+
+            for(var lineNo = 2; lineNo < lines.length; lineNo++) {
+                var line = lines[lineNo];
+
+                var parts = line.split('?');
+                if (parts.length > 1) {
+
+                    var name = parts[0].trim().split("_").join(" ");
+                    var resultParts = parts[1].trim().split('#');
+                    var result = resultParts[0];
+                    var message = resultParts[1];
+
+                    if(name == 'MISSED') {
+                        var fileTimeParts = message.split('-');
+                        var fileTime = new Date();
+                        fileTime.setHours(parseInt(fileTimeParts[0]));
+                        fileTime.setMinutes(parseInt(fileTimeParts[1]));
+                        fileTime.setSeconds(parseInt(fileTimeParts[2]));
+
+                        var scriptTime = new Date();
+                        scriptTime.setMinutes(scriptTime.getMinutes() - 2);
+                        if (scriptTime.getTime() < fileTime.getTime()){
+                            if (result == "0") {
+                                html += '<div class="ok">EVERYTHING OK<br/>' + fileTime.toLocaleTimeString() + '</div>';
+                            } else {
+                                html += '<div class="fail">FAILED: ' + result + '<br/>' + fileTime.toLocaleTimeString() + '</div>';
+                            }
+                        } else {
+                            html += '<div class="check fail">CHECKS TOO OLD<br/>' + fileTime.toLocaleTimeString() + '</div>';
+                        }
+                    } else {
+                        if(result.indexOf('OK') >= 0) {
+                            html += '<div class="ok">'+ name;
+                        } else if(result.indexOf('INFO') >= 0) {
+                            html += '<div class="info">'+ name;
+                        } else if(result.indexOf('TIMEOUT') >= 0) {
+                            html += '<div class="timeout">'+ name;
+                        } else if(result.indexOf('WARN') >= 0) {
+                            html += '<div class="warn">'+ name;
+                        } else {
+                            html += '<div class="fail">' + name;
+                        }
+                        if(message) {
+                            html += '<br/>' + message.trim();
+                        }
+                        html += '</div>';
+                    }
+                }
+            }
+            return html;
+        }
+        function exchangeChecks(text) {
+            document.getElementById("checks").innerHTML = convertToHtml(text);
+        }
+        function refreshTime() {
+            document.getElementById("datetime").innerHTML = new Date().toLocaleString("de-DE", {timeZone: "Europe/Berlin"});
+        }
+        function refreshChecks() {
+            connectionAlive = downloadCheckFile(exchangeChecks);
+        }
+        function reloadIfAlive() {
+            if (connectionAlive) {
+                location.reload();
+            }
+        }
+        setInterval(refreshTime, 1000);
+        setInterval(refreshChecks, 5000);
+        setInterval(reloadIfAlive, 300000);
+        refreshTime();
+        refreshChecks();
+    </script>
+</body>
+</html>
