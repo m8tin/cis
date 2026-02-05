@@ -90,6 +90,28 @@ function isWildcardCertificate() {
     return 1
 }
 
+function tryGitPull() {
+    local _RESULT_CERTS
+    _RESULT_CERTS="${RESULT_CERTS:?"tryGitPul(): Missing global parameter RESULT_CERTS"}"
+    readonly _RESULT_CERTS
+
+    ! isGitRepository "${_RESULT_CERTS}" \
+        && return 0
+
+    pushd "${_RESULT_CERTS}" > /dev/null
+    git pull > /dev/null \
+        && popd > /dev/null \
+        && echo "SUCCESS: Repository was updated." \
+        && return 0
+
+   echo "FAILED: unable to pull repository '${_RESULT_CERTS}'."
+   echo "  Trying to repair '${_RESULT_CERTS}' by a reset:"
+   git reset --hard origin/main
+   git pull
+   popd > /dev/null
+   return 0
+}
+
 function tryGitPush() {
     local _DOMAIN _NOW _RESULT_CERTS
     _RESULT_CERTS="${RESULT_CERTS:?"tryGitPush(): Missing global parameter RESULT_CERTS"}"
@@ -111,8 +133,8 @@ function tryGitPush() {
         && echo "SUCCESS: certificate for '${_DOMAIN}' pushed." \
         && return 0
 
-   popd > /dev/null
    echo "FAILED: unable to push certificate for '${_DOMAIN}'."
+   popd > /dev/null
    return 0
 }
 
@@ -158,25 +180,25 @@ function own() {
     return 0
 }
 
-function continueIssuingCertificate() {
+function abortIssuingCertificate() {
     local _CERT_FILE_FULLCHAIN _DOMAIN
-    _CERT_FILE_FULLCHAIN="${1:?"continueIssuingCertificate(): Missing first parameter CERT_FILE_FULLCHAIN"}"
-    _DOMAIN="${2:?"continueIssuingCertificate(): Missing second parameter DOMAIN"}"
+    _CERT_FILE_FULLCHAIN="${1:?"abortIssuingCertificate(): Missing first parameter CERT_FILE_FULLCHAIN"}"
+    _DOMAIN="${2:?"abortIssuingCertificate(): Missing second parameter DOMAIN"}"
     local _CERT_FILE_FULLCHAIN _DOMAIN
 
     local _PRETTY_DOMAIN
     _PRETTY_DOMAIN="$(printPrettyDomain ${_DOMAIN})"
     readonly _PRETTY_DOMAIN
 
-    # forced => should be issued
+    # forced => should be issued => no abort
     [ "${3:-""}" == "--force" ] \
         && echo "Certificate for domain '${_PRETTY_DOMAIN}' is forced to be issued." \
-        && return 0
+        && return 1
 
-    # no cert => should be issued
+    # no cert => should be issued => no abort
     ! [ -f "${_CERT_FILE_FULLCHAIN}" ] \
         && echo "No certificate for domain '${_PRETTY_DOMAIN}', so it will be issued." \
-        && return 0
+        && return 1
 
     local _ENDDATE _NOW _REMAINING_DAYS
     _ENDDATE="$(openssl x509 -enddate -noout -in ${_CERT_FILE_FULLCHAIN} | cut -d= -f2)"
@@ -186,13 +208,14 @@ function continueIssuingCertificate() {
     _REMAINING_DAYS="$(( (_ENDDATE - _NOW) / 86400 ))"
     readonly _ENDDATE _NOW _REMAINING_DAYS
 
-    # less than 30 days remaining => should be issued
+    # less than 30 days remaining => should be issued => no abort
     [ "${_REMAINING_DAYS}" -le "30" ] \
         && echo "Certificate for domain '${_PRETTY_DOMAIN}' (${_REMAINING_DAYS} days remaining) will be issued." \
-        && return 0
+        && return 1
 
+    # more than 30 days => should NOT be issued => abort
     echo "Certificate for domain '${_PRETTY_DOMAIN}' (${_REMAINING_DAYS} days remaining) will be skipped."
-    return 1
+    return 0
 }
 
 function printBaseDomain() {
@@ -320,7 +343,14 @@ function single() {
         && return 1
 
     # check enddate if third parameter is not --force
-    ! continueIssuingCertificate "${_DOMAIN_FOLDER}fullchain.crt" "${_DOMAIN}" "${3:-""}" \
+    # if abort is triggered here the repo is up to date enough
+    abortIssuingCertificate "${_DOMAIN_FOLDER}fullchain.crt" "${_DOMAIN}" "${3:-""}" \
+        && return 0
+
+    # update repo to ensure it is really uo to date
+    # Then check enddate again if third parameter is not --force
+    tryGitPull \
+        && abortIssuingCertificate "${_DOMAIN_FOLDER}fullchain.crt" "${_DOMAIN}" "${3:-""}" \
         && return 0
 
     # backup the keys

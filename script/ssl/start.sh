@@ -85,6 +85,7 @@ function ensureRepositoryIsAvailableAndWritable() {
 
     [ -d "${_REPOSITORY_FOLDER}.git" ] \
         && echo \
+        && git -C "${_REPOSITORY_FOLDER}" reset --hard origin/main &> /dev/null \
         && git -C "${_REPOSITORY_FOLDER}" pull &> /dev/null \
         && git -C "${_REPOSITORY_FOLDER}" push --dry-run &> /dev/null \
         && echo "Writable repository found in folder '${_REPOSITORY_FOLDER}'." \
