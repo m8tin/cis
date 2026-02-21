@@ -8,7 +8,9 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     environment:
-      AUTOACME_CONTAINER_HOSTNAME: ${HOSTNAME:?"HINT - You may run 'export HOSTNAME' first."}
+      # Docker cannot use variable ${HOSTNAME} until an export.
+      # You can automate that export on each user-session startup by append 'export HOSTNAME' to '~/.bashrc'.
+      AUTOACME_CONTAINER_HOSTNAME: ${HOSTNAME:?"HINT - You may run 'export HOSTNAME' first, or add it to your '~/.bashrc'."}
       AUTOACME_GIT_REPOSITORY_VIA_SSH: 'ssh://git@git.your-domain.net/your-repo.git'
       # Optionally you can set a path inside the git repository, requires a repository.
       AUTOACME_PATH_IN_GIT_REPOSITORY: 'hosts/all/etc/ssl/domains/'
