@@ -85,15 +85,19 @@ function ensureRepositoryIsAvailableAndWritable() {
 
     [ -d "${_REPOSITORY_FOLDER}.git" ] \
         && echo \
+        && echo "Folder '${_REPOSITORY_FOLDER}' is a git repository." \
         && git -C "${_REPOSITORY_FOLDER}" reset --hard origin/main &> /dev/null \
+        && echo "Reset to remote branche 'origin/main' successful." \
         && git -C "${_REPOSITORY_FOLDER}" pull &> /dev/null \
+        && echo "Pulling latest changes successful." \
         && git -C "${_REPOSITORY_FOLDER}" push --dry-run &> /dev/null \
-        && echo "Writable repository found in folder '${_REPOSITORY_FOLDER}'." \
+        && echo "SUCCESS: updated repository found in folder '${_REPOSITORY_FOLDER}' and it is writable." \
         && return 0
 
     ! [ -d "${_REPOSITORY_FOLDER}.git" ] \
         && echo \
-        && echo "Cloning repository '${AUTOACME_GIT_REPOSITORY_VIA_SSH}'... " \
+        && echo "Folder '${_REPOSITORY_FOLDER}' does not exist or is not a git repository," \
+        && echo "so the repository '${AUTOACME_GIT_REPOSITORY_VIA_SSH}' will be cloned there... " \
         && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" git clone "${AUTOACME_GIT_REPOSITORY_VIA_SSH}" "${_REPOSITORY_FOLDER}" &> /dev/null \
         && git -C "${_REPOSITORY_FOLDER}" config user.name "autoacme on ${AUTOACME_CONTAINER_HOSTNAME%%.*}" \
         && git -C "${_REPOSITORY_FOLDER}" config user.email "autoacme@${AUTOACME_CONTAINER_HOSTNAME%%.*}" \
