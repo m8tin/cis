@@ -11,9 +11,18 @@ services:
       # Docker cannot use variable ${HOSTNAME} until an export.
       # You can automate that export on each user-session startup by append 'export HOSTNAME' to '~/.bashrc'.
       AUTOACME_CONTAINER_HOSTNAME: ${HOSTNAME:?"HINT - You may run 'export HOSTNAME' first, or add it to your '~/.bashrc'."}
+
+      #-------------------------------------------------------------------------------
+      # IMPORTANT !!!
+      # DO NOT, I REPEAT DO NOT use a public GIT repository for secure infomation !!!
+      # Avoid GitHub, Gitlab, ect. for this usecase !!!
+      #-------------------------------------------------------------------------------
+      # You can define a repository here to distribute all certificates and their keys.
       AUTOACME_GIT_REPOSITORY_VIA_SSH: 'ssh://git@git.your-domain.net/your-repo.git'
+
       # Optionally you can set a path inside the git repository, requires a repository.
       AUTOACME_PATH_IN_GIT_REPOSITORY: 'hosts/all/etc/ssl/domains/'
+
       # See: https://github.com/acmesh-official/acme.sh/wiki/dnsapi   and search your provider like 'hetzner' e.g. 
       AUTOACME_DNS_PROVIDER: 'dns_hetzner'
       HETZNER_Token: 'your-token'
