@@ -38,7 +38,7 @@ function cloneOrPull {
         && return 0
 
     ! [ -d "${_FOLDER}/.git" ] \
-        && git clone "${_REPOSITORY}" "${_FOLDER}" &> /dev/null \
+        && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" git clone "${_REPOSITORY}" "${_FOLDER}" &> /dev/null \
         && return 0
 
     echo "FAIL: The local repository is not updatable:       ("$(readlink -f ${0})")" >&2

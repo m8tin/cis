@@ -10,6 +10,11 @@ function prepareFolder() {
     _USER="${_HOME_FOLDER##*/}"            #Removes longest matching pattern '*/'     from the begin
     readonly _HOME_FOLDER _SSH_FOLDER _USER
 
+    ! id "${_USER}" &> /dev/null \
+        && echo "FAIL: The given user does not exist:               ("$(readlink -f ${0})")" \
+        && echo "  - '${_USER}'" \
+        && return 1
+
     ! [ -d "${_HOME_FOLDER}" ] \
         && echo "FAIL: The home folder is unavailable:              ("$(readlink -f ${0})")" \
         && echo "  - '${_HOME_FOLDER}'" \
@@ -50,6 +55,40 @@ function prepareFolder() {
     return 1
 }
 
+function ensureGroupMembership() {
+    local _SSH_GROUP _USER
+    _SSH_GROUP="ssh_login"
+    _USER="${1:?"ensureGroupMembership(): Missing first parameter USER"}"
+    readonly _SSH_GROUP _USER
+
+    ! id "${_USER}" &> /dev/null \
+        && echo "FAIL: The given user does not exist:               ("$(readlink -f ${0})")" \
+        && echo "  - '${_USER}'" \
+        && return 1
+
+    ! getent group | cut -d: -f1 | grep -qF "${_SSH_GROUP}" \
+        && addgroup --system --quiet "${_SSH_GROUP}" \
+        && adduser --quiet "${_USER}" "${_SSH_GROUP}" \
+        && echo "SUCCESS: Group was created and user was added:     ("$(readlink -f ${0})")" \
+        && echo "  - Group: '${_SSH_GROUP}'" \
+        && echo "  - User:  '${_USER}'" \
+        && return 0
+
+    # Ensure the group exists then add user
+    getent group | cut -d: -f1 | grep -qF "${_SSH_GROUP}" \
+        && adduser --quiet "${_USER}" "${_SSH_GROUP}" \
+        && echo "SUCCESS: Group already exists and user was added:  ("$(readlink -f ${0})")" \
+        && echo "  - Group: '${_SSH_GROUP}'" \
+        && echo "  - User:  '${_USER}'" \
+        && return 0
+
+    echo "FAIL: The user could not be added to the group:           ("$(readlink -f ${0})")" >&2
+    echo "  - Group: '${_SSH_GROUP}'" >&2
+    echo "  - User:  '${_USER}'" >&2
+    echo "  - due to an error or insufficient rights." >&2
+    return 1
+}
+
 function defineAuthorizedKeysOfUser() {
     local _CIS_ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
     _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")"
@@ -67,13 +106,19 @@ function defineAuthorizedKeysOfUser() {
         root)
             prepareFolder "/root/.ssh" \
                 && echo \
-                && source "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/root/.ssh/authorized_keys" \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/root/.ssh/authorized_keys" \
+                && echo \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/etc/ssh/sshd_config.d/AccessRestriction.conf" \
                 && return 0 || return 1
             ;;
         *)
             prepareFolder "/home/${_USER}/.ssh" \
                 && echo \
-                && source "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/home/${_USER}/.ssh/authorized_keys" \
+                && ensureGroupMembership "${_USER}" \
+                && echo \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/home/${_USER}/.ssh/authorized_keys" \
+                && echo \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/etc/ssh/sshd_config.d/AccessRestriction.conf" \
                 && return 0 || return 1
             ;;
     esac
