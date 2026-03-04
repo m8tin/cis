@@ -32,23 +32,23 @@ function testSpace(){
     checkOrStartSSHMaster \
         || return 1
 
-    local _RESULT="$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} 'zpool list -H -o name,capacity')"
-    local _POOL=$(echo "${_RESULT}" | /usr/bin/tail -n 1 | /usr/bin/cut -f1)
-    local _SPACE_USED=$(echo "${_RESULT}" | /usr/bin/tail -n 1 | /usr/bin/cut -f2)
+    local _RESULT="$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} 'df "/" | tail -n1 | tr -s "[:blank:]" " " | cut -d" " -f1,5')"
+    local _DEV=$(echo "${_RESULT}" | /usr/bin/tail -n 1 | /usr/bin/cut -d' ' -f1)
+    local _SPACE_USED=$(echo "${_RESULT}" | /usr/bin/tail -n 1 | /usr/bin/cut -d' ' -f2)
 
     [ -z "${_SPACE_USED}" ] \
         && echo "FAIL#NO value" \
         && return 0
 
     [ "${1:?"Missing OK_THRESHOLD"}" -ge "${_SPACE_USED%\%*}" ] \
-        && echo "OK#${_SPACE_USED} used ${_POOL}." \
+        && echo "OK#${_SPACE_USED} used ${_DEV}." \
         && return 0
 
     [ "${2:?"Missing INFO_THRESHOLD"}" -ge "${_SPACE_USED%\%*}" ] \
-        && echo "INFO#${_SPACE_USED} already used ${_POOL}." \
+        && echo "INFO#${_SPACE_USED} already used ${_DEV}." \
         && return 0
 
-    echo "FAIL#${_SPACE_USED} used ${_POOL}!"
+    echo "FAIL#${_SPACE_USED} used ${_DEV}!"
     return 0
 }
 
