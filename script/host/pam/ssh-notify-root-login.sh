@@ -73,10 +73,21 @@ function setup() {
     return 0
 }
 
-if [ "$PAM_TYPE" != "close_session" ] && ! setup && [ "${PAM_USER}" != "" ] && [ "${PAM_USER}" == "root" ]; then
+if [ "$PAM_TYPE" != "close_session" ] && ! setup && [ "${PAM_USER}" != "" ]; then
+
+    # Log root logins only
+    [ "${PAM_USER}" != "root" ] \
+        && exit 0
+
+    # Skip logins from private IPs
+    echo "${PAM_RHOST}" | grep -Eq "^192\.168\..*$" \
+        && exit 0
+
     _MESSAGE="[$(date --rfc-3339=seconds)] - Login from IP: '${PAM_RHOST}' as user 'root@$(hostname)'"
 
     log "${_MESSAGE}"
     sendEMail "${_MESSAGE}"
     sendSlackMessage "${_MESSAGE}"
 fi
+
+exit 0
