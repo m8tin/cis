@@ -1,9 +1,9 @@
 #!/bin/bash
 
-_CURRENT_FILE='/etc/sudoers.d/allow-jenkins-updateRepositories'
+_CURRENT_FILE='/etc/ssh/sshd_config.d/AccessRestriction.conf'
 
-[ "$(id -u)" != "0" ] \
-    && printf "(INSUFFICENT RIGHTS) " \
+#No file is NOT ok
+[ ! -e "${_CURRENT_FILE}" ] \
     && exit 1
 
 #File has to be readable, then
