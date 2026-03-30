@@ -125,13 +125,17 @@ function addDefinition(){
     readonly _DEFINITIONS _REPOSITORY
 
     [ "$(id -u)" == "0" ] \
+        && echo \
         && echo "Running setup as 'root' trying to add definition repository:" \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" readonly "${_REPOSITORY}" \
         && echo "  - definitions are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
+        && echo \
         && echo "Running setup as 'user' trying to add definition repository:" \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" writable "${_REPOSITORY}" \
         && echo "  - definitions are usable, as working copy." \
         && return 0
@@ -146,6 +150,7 @@ function addState() {
     readonly _STATES _REPOSITORY
 
     [ "$(id -u)" == "0" ] \
+        && echo \
         && echo "Running setup as 'root' trying to add state repository:" \
         && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
@@ -153,6 +158,7 @@ function addState() {
         && return 0
 
     [ "$(id -u)" != "0" ] \
+        && echo \
         && echo "Running setup as 'user' trying to add state repository:" \
         && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
@@ -169,12 +175,17 @@ function setupCoreFunctionality() {
     readonly _DEFINITIONS _MINUTE_FROM_OWN_IP
 
     [ "$(id -u)" != "0" ] \
+        && echo \
         && echo "Configuration of host skipped because of insufficient rights." \
         && return 1
 
     [ "$(id -u)" == "0" ] \
         && echo \
+        && echo "Using definitions: '${_DEFINITIONS:?"Missing DEFINITIONS"}' ..." \
+        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${_DEFINITIONS}" root \
+        && echo \
+        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" /etc/adduser.conf \
         && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addNormalUser.sh" jenkins \
         && echo \
@@ -199,12 +210,8 @@ function setup() {
     _STATES="${_CIS_ROOT:?"Missing CIS_ROOT"}states/${_DOMAIN:?"Missing DOMAIN"}"
     readonly _DEFINITIONS _DOMAIN _STATES
 
-    echo \
-        && addDefinition "${_DEFINITIONS:?"Missing DEFINITIONS"}" "${_DOMAIN:?"Missing DOMAIN"}" \
-        && echo \
+    addDefinition "${_DEFINITIONS:?"Missing DEFINITIONS"}" "${_DOMAIN:?"Missing DOMAIN"}" \
         && addState "${_STATES:?"Missing STATES"}" "${_DOMAIN:?"Missing DOMAIN"}" \
-        && echo \
-        && echo "Using definitions: '${_DEFINITIONS:?"Missing DEFINITIONS"}' ..." \
         && setupCoreFunctionality "${_DEFINITIONS:?"Missing DEFINITIONS"}" \
         && return 0
 

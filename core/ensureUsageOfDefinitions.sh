@@ -12,16 +12,19 @@ function printIfEqual() {
 }
 
 function isCoreDefinition() {
-    echo "${1:?"Missing first parameter FILE"}" | grep -F '/root/.ssh/authorized_keys' &> /dev/null \
+    echo "${1:?"Missing first parameter FILE"}" | grep -F '/etc/adduser.conf' &> /dev/null \
         && return 0
 
     echo "${1:?"Missing first parameter FILE"}" | grep -F '/etc/ssh/sshd_config.d/AccessRestriction.conf' &> /dev/null \
         && return 0
 
+    echo "${1:?"Missing first parameter FILE"}" | grep -F '/etc/sudoers.d/allow-jenkins-updateRepositories' &> /dev/null \
+        && return 0
+
     echo "${1:?"Missing first parameter FILE"}" | grep -F '/home/jenkins/.ssh/authorized_keys' &> /dev/null \
         && return 0
 
-    echo "${1:?"Missing first parameter FILE"}" | grep -F '/etc/sudoers.d/allow-jenkins-updateRepositories' &> /dev/null \
+    echo "${1:?"Missing first parameter FILE"}" | grep -F '/root/.ssh/authorized_keys' &> /dev/null \
         && return 0
 
     return 1
