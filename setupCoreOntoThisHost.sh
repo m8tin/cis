@@ -127,7 +127,6 @@ function addDefinition(){
     [ "$(id -u)" == "0" ] \
         && echo \
         && echo "Running setup as 'root' trying to add definition repository:" \
-        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" readonly "${_REPOSITORY}" \
         && echo "  - definitions are usable for this host." \
         && return 0
@@ -135,7 +134,6 @@ function addDefinition(){
     [ "$(id -u)" != "0" ] \
         && echo \
         && echo "Running setup as 'user' trying to add definition repository:" \
-        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" writable "${_REPOSITORY}" \
         && echo "  - definitions are usable, as working copy." \
         && return 0
@@ -152,7 +150,6 @@ function addState() {
     [ "$(id -u)" == "0" ] \
         && echo \
         && echo "Running setup as 'root' trying to add state repository:" \
-        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
         && echo "  - states are usable for this host." \
         && return 0
@@ -160,7 +157,6 @@ function addState() {
     [ "$(id -u)" != "0" ] \
         && echo \
         && echo "Running setup as 'user' trying to add state repository:" \
-        && echo \
         && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
         && echo "  - states are usable, as working copy." \
         && return 0
