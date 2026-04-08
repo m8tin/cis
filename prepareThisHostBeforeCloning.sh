@@ -12,12 +12,12 @@ function setNeededHostnameOrExit() {
         && hostnamectl set-hostname "${_FQDN}" \
         && return 0
 
-    echo "FAILED: setting full qualified domain name does not contain a domain,"
+    echo "FAILED: the specified fully qualified domain name does not contain a domain,"
     echo "        given value was: ${_FQDN}"
     exit 1
 }
 
-function prepareThisHost() {
+function printOrGenerateSSHKeysForRoot() {
     git --version > /dev/null || (apt update; apt upgrade -y; apt install git)
 
     echo
@@ -66,7 +66,7 @@ function showFurtherSteps() {}
 
 # sanitizes all parameters
 setNeededHostnameOrExit "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && prepareThisHost \
+    && printOrGenerateSSHKeysForRoot \
     && showFurtherSteps \
     && exit 0
 
