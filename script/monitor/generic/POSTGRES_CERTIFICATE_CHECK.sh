@@ -1,9 +1,10 @@
 #!/bin/bash
 
 function checkPostgresSSLCertificate() {
-    local _SERVER
+    local _SERVER _THRESHOLD_DAYS
     _SERVER="${1:?"FQDN of server missing"}"
-    readonly _SERVER
+    _THRESHOLD_DAYS="${2:?"THRESHOLD in days missing"}"
+    readonly _SERVER _THRESHOLD_DAYS
 
     local _RESULT
     _RESULT="$(echo | openssl s_client -starttls postgres -connect "${_SERVER}":5432 -servername "${_SERVER}" 2> /dev/null | openssl x509 -noout -enddate | grep -F 'notAfter=' | cut -d'=' -f2)"
@@ -26,12 +27,20 @@ function checkPostgresSSLCertificate() {
     _REMAINING_DAYS="$(( (_ENDDATE - _NOW) / 86400 ))"
     readonly _NOW _REMAINING_DAYS
 
-    [ -z "${_REMAINING_DAYS}" ] \
-        && echo "WARN#Only ${_REMAINING_DAYS} days left" \
+    ! echo "${_REMAINING_DAYS}" | grep -q -E "^[0-9]*$" \
+        && echo "FAIL#Remaining days '${_REMAINING_DAYS}' are invalid" \
         && return 1
 
-    echo "OK#${_REMAINING_DAYS} days remaining"
-    return 0
+    ! echo "${_THRESHOLD_DAYS}" | grep -q -E "^[0-9]*$" \
+        && echo "FAIL#Threshold days '${_THRESHOLD_DAYS}' are invalid" \
+        && return 1
+
+    [ "${_REMAINING_DAYS}" -gt "${_THRESHOLD_DAYS}" ] \
+        && echo "OK#${_REMAINING_DAYS} days remaining" \
+        && return 0
+
+    echo "WARN#Only ${_REMAINING_DAYS} days left"
+    return 1
 }
 
 checkPostgresSSLCertificate "${@}" && exit 0 || exit 1
