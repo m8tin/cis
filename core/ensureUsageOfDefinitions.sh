@@ -53,14 +53,14 @@ function filterInvalidAuthorizedKeysFilesOfRoot() {
 }
 
 function printSelectedDefinition() {
-    local _DEFINITIONS  _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    local _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
     _DEFINITIONS="${1:?"Missing CIS_ROOT"}definitions/${2:?"Missing DOMAIN"}/"
-    _CORE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}core/default${3:?"Missing CURRENT_FULLFILE"}"
+    _CORE_FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/core/all${3:?"Missing CURRENT_FULLFILE"}"
     _CORE_FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}core/all${3:?"Missing CURRENT_FULLFILE"}"
     _CORE_FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}core/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/all${3:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
-    readonly _DEFINITIONS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    readonly _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
 
     #The following are special definitions that affect the core functionality.
     #Try this host first because it should be priorized.
@@ -77,8 +77,8 @@ function printSelectedDefinition() {
 
     #The following are special definitions that affect the core functionality.
     isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
-        && [ -s "${_CORE_DEFAULT_ALL_HOSTS}" ] \
-        && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_DEFAULT_ALL_HOSTS}" \
+        && [ -s "${_CORE_FILE_DEFAULT_ALL_HOSTS}" ] \
+        && filterInvalidAuthorizedKeysFilesOfRoot "${_CORE_FILE_DEFAULT_ALL_HOSTS}" \
         && return 0
 
     #Try this host first because it should be priorized.

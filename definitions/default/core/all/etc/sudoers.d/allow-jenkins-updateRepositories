@@ -1,0 +1,6 @@
+Cmnd_Alias C_JENKINS = \
+  /cis/updateRepositories.sh --core, \
+  /cis/updateRepositories.sh --scripts, \
+  /cis/updateRepositories.sh --definitions, \
+  /cis/updateRepositories.sh --states
+jenkins ALL = (root) NOPASSWD: C_JENKINS

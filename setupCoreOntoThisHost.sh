@@ -216,8 +216,27 @@ function setup() {
     return 1
 }
 
-# sanitizes all parameters
-setup "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && exit 0
+function isValid() {
+    # printf '%s'
+    #  - always treats the contents of ${1} as pure plain text.
+    # grep -qE: checks RegExp, but quiet
+    printf '%s' "${1}" | grep -qE "${2:?"isValid(): Missing REGEXP"}"
+}
+
+function isValidOptional() {
+    [ -z "${1}" ] || isValid "${1}" "${2}"
+}
+
+
+
+# Parameter 1: Only alphanumeric characters allowed and [.-] if not leading (due to: -oProxyCommand=...).
+if isValidOptional "${1}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
+then
+    setup "${1}" \
+        && exit 0
+else
+    echo "Failure: At least one parameter is invalid" >&2
+    exit 1
+fi
 
 exit 1

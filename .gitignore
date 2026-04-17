@@ -1,10 +1,24 @@
-# Ignore the file '/overrideOwnDomain' because this is per host individually.
+# Ignore the file '/overrideOwnDomain' because this is per host individually if it was created.
 /overrideOwnDomain
 
 # Ignore the subfolders only, because their content are other git repositories.
-# But 'definitions and 'states' should be prepared by cloning this repository.
-/definitions/*/
-/states/*/
+# But 'definitions and 'states' should be prepared by cloning this repository, so:
+
+# 1.) Ignore all content of 'definitions', except file README.md and subfolder 'default/core/all/'
+/definitions/*
+!/definitions/README.md
+!/definitions/default/
+/definitions/default/*
+!/definitions/default/core/
+/definitions/default/core/*
+!/definitions/default/core/all/
+
+# 2.) Ignore all content of 'states', except file README.md
+/states/*
+!/states/README.md
 
 # Ignore environment files
 .env
+
+# Ignore docker-compose files
+docker-compose.yml
