@@ -117,7 +117,9 @@ then
     _RECEIVERS_SNAPSHOT="${3}"
     _RESUME_TOKEN="${4}"
 
+    _NOW=$(date -u "+%Y-%m-%d_%H:%M:%S")
     _ZFS="zpool1/persistent/${_COMPOSITION:?"COMPOSITION missing"}"
+    _NEW_SNAPSHOT="${_ZFS:?"ZFS missing"}@SYNC_${_RECEIVERHOST:?"RECEIVERHOST missing"}_${_NOW:?"NOW missing"}"
 
     # Resume mode
     if [ "${_RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
@@ -131,9 +133,6 @@ then
     ! _COMMON_SNAPSHOT=$(printFoundCommonSnapshot "${_ZFS}" "${_RECEIVERHOST}" "${_RECEIVERS_SNAPSHOT}") \
         && echo "Failure in sync-send.sh: abort" >&2 \
         && exit 1
-
-    # Now create the first or a further sync-snapshot as end-point.
-    _NEW_SNAPSHOT="${_ZFS}@SYNC_${_RECEIVERHOST:?"RECEIVERHOST missing"}_$(date -u "+%Y-%m-%d_%H:%M:%S")"
 
     [ "${_COMMON_SNAPSHOT}" == "" ] \
         && zfs snapshot "${_NEW_SNAPSHOT}" \
