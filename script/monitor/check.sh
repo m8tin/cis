@@ -43,7 +43,7 @@ function doChecks(){
 }
 
 function usage(){
-    printf "\nUsage: /monitoring/check.sh <command> <options>"
+    printf "\nUsage: /monitor/check.sh <command> <options>"
     echo
     echo "possible commands:"
     echo

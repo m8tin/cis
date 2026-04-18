@@ -32,13 +32,14 @@ function testDomain(){
     checkOrStartSSHMaster \
         || return 1
 
-    local _RESULT="$(ssh -S ${_SOCKET} -p ${_REMOTE_PORT} ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} 'bash /cis/core/printOwnDomain.sh' 2>&1 1>/dev/null)"
+    local _RESULT=$(ssh -S "${_SOCKET}" -p "${_REMOTE_PORT}" "${_REMOTE_USER}"@"${_REMOTE_HOSTNAME_FQDN}" 'bash /cis/core/printOwnDomain.sh' 2>&1 1>/dev/null)
 
     [ -z "${_RESULT}" ] \
         && echo "OK" \
         && return 0
 
-    echo "WARNING#Check hosts '/cis/core/printOwnDomain'"
+    local _DOMAIN=$(ssh -S "${_SOCKET}" -p "${_REMOTE_PORT}" "${_REMOTE_USER}"@"${_REMOTE_HOSTNAME_FQDN}" 'bash /cis/core/printOwnDomain.sh' 2>/dev/null)
+    echo "WARNING#Overwritten to '${_DOMAIN}'"
     return 0
 }
 
