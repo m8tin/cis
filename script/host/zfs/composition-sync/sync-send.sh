@@ -1,34 +1,70 @@
 #!/bin/bash
 
-function printFoundCommonSnapshot() {
-    local _ZFS _COMMON_SNAPSHOT_CANDIDATE
-    _ZFS="${1:?"printFoundCommonSnapshot(): Missing first parameter ZFS"}"
-    _COMMON_SNAPSHOT_CANDIDATE="${2:?"printFoundCommonSnapshot(): Missing second parameter COMMON_SNAPSHOT_CANDIDATE"}"
-    readonly _ZFS _COMMON_SNAPSHOT_CANDIDATE
+function printNewestOrdinarySnapshot() {
+    local _ZFS _RECEIVERHOST
+    _ZFS="${1:?"printNewestOrdinarySnapshot(): Missing first parameter ZFS"}"
+    _RECEIVERHOST="${2:?"printNewestOrdinarySnapshot(): Missing second parameter RECEIVERHOST"}"
+    readonly _ZFS _RECEIVERHOST
 
-    local _FOUND_COMMON_SNAPSHOT
-    _FOUND_COMMON_SNAPSHOT=""
+    local _RESULT
+    _RESULT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | grep -vF '@SYNC' | head -n 1 | cut -d'@' -f2)
+
+    [ -n "${_RESULT}" ] \
+        && echo "@${_RESULT}" \
+        && return 0
+
+    echo "none"
+    return 1
+}
+
+function printNewestSyncSnapshot() {
+    local _ZFS _RECEIVERHOST
+    _ZFS="${1:?"printNewestSyncSnapshot(): Missing first parameter ZFS"}"
+    _RECEIVERHOST="${2:?"printNewestSyncSnapshot(): Missing second parameter RECEIVERHOST"}"
+    readonly _ZFS _RECEIVERHOST
+
+    local _RESULT
+    _RESULT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | grep -E "^${_ZFS}@SYNC_${_RECEIVERHOST}_" | head -n 1 | cut -d'@' -f2)
+
+    [ -n "${_RESULT}" ] \
+        && echo "@${_RESULT}" \
+        && return 0
+
+    echo "none"
+    return 1
+}
+
+function printFoundCommonSnapshot() {
+    local _ZFS _RECEIVERHOST _COMMON_SNAPSHOT_CANDIDATE
+    _ZFS="${1:?"printFoundCommonSnapshot(): Missing first parameter ZFS"}"
+    _RECEIVERHOST="${2:?"printFoundCommonSnapshot(): Missing second parameter RECEIVERHOST"}"
+    _COMMON_SNAPSHOT_CANDIDATE="${3:?"printFoundCommonSnapshot(): Missing third parameter COMMON_SNAPSHOT_CANDIDATE"}"
+    readonly _ZFS _RECEIVERHOST _COMMON_SNAPSHOT_CANDIDATE
+
+    # Nothing to do and nothing found
+    [ "${_COMMON_SNAPSHOT_CANDIDATE}" == "" ] \
+        && return 1
 
     while read -r _ROW
     do
         if [ "${_ROW}" == "${_ZFS}@${_COMMON_SNAPSHOT_CANDIDATE}" ]; then
-            _FOUND_COMMON_SNAPSHOT="${_ROW}"
-            break
+            echo "${_ROW}"
+            return 0
         fi
     done < <(zfs list -H -o name -S creation -t snapshot "${_ZFS}")
 
-    [ $? -eq 0 ] \
-        && echo "${_FOUND_COMMON_SNAPSHOT}" \
-        && return 0
-
+    echo "No common snapshot found:" >&2
+    echo "  - snapshot candidate from receiver:   @${_COMMON_SNAPSHOT_CANDIDATE}" >&2
+    echo "  - newest ordinary snapshot of sender: $(printNewestOrdinarySnapshot "${_ZFS}" "${_RECEIVERHOST}")" >&2
+    echo "  - newest sync snapshot of sender:     $(printNewestSyncSnapshot "${_ZFS}" "${_RECEIVERHOST}")" >&2
     return 1
 }
 
-function removeAllSyncSnapshotsExeptTheCommonOne() {
+function removeReceiverhostsSyncSnapshotsExeptTheCommonOne() {
     local _ZFS _RECEIVERHOST _COMMON_SNAPSHOT
-    _ZFS="${1:?"removeAllSyncSnapshotsExeptTheCommonOne(): Missing first parameter ZFS"}"
-    _RECEIVERHOST="${2:?"removeAllSyncSnapshotsExeptTheCommonOne(): Missing second parameter RECEIVERHOST"}"
-    _COMMON_SNAPSHOT="${3:?"removeAllSyncSnapshotsExeptTheCommonOne(): Missing third parameter COMMON_SNAPSHOT"}"
+    _ZFS="${1:?"removeReceiverhostsSyncSnapshotsExeptTheCommonOne(): Missing first parameter ZFS"}"
+    _RECEIVERHOST="${2:?"removeReceiverhostsSyncSnapshotsExeptTheCommonOne(): Missing second parameter RECEIVERHOST"}"
+    _COMMON_SNAPSHOT="${3:?"removeReceiverhostsSyncSnapshotsExeptTheCommonOne(): Missing third parameter COMMON_SNAPSHOT"}"
     readonly _ZFS _RECEIVERHOST _COMMON_SNAPSHOT
 
     while read -r _ROW
@@ -86,19 +122,15 @@ then
     # Resume mode
     if [ "${_RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
         sendResume "${_RESUME_TOKEN}"
+
+        # Exit preserving the code 
         exit $?
     fi
 
     # This common snapshot is the starting-point, if available.
-    _COMMON_SNAPSHOT="$(printFoundCommonSnapshot ${_ZFS} ${_RECEIVERS_SNAPSHOT})"
-
-    [ "${_COMMON_SNAPSHOT}" == "" ] \
-        && [ "${_RECEIVERS_SNAPSHOT}" != "" ] \
-        && echo "Requested snapshot '${_RECEIVERS_SNAPSHOT}' not available" \
+    ! _COMMON_SNAPSHOT=$(printFoundCommonSnapshot "${_ZFS}" "${_RECEIVERHOST}" "${_RECEIVERS_SNAPSHOT}") \
+        && echo "Failure in sync-send.sh: abort" >&2 \
         && exit 1
-
-    [ "${_COMMON_SNAPSHOT}" != "" ] \
-        && removeAllSyncSnapshotsExeptTheCommonOne "${_ZFS}" "${_RECEIVERHOST}" "${_COMMON_SNAPSHOT}"
 
     # Now create the first or a further sync-snapshot as end-point.
     _NEW_SNAPSHOT="${_ZFS}@SYNC_${_RECEIVERHOST:?"RECEIVERHOST missing"}_$(date -u "+%Y-%m-%d_%H:%M:%S")"
@@ -109,14 +141,15 @@ then
         && exit 0
 
     [ "${_COMMON_SNAPSHOT}" != "" ] \
-        && removeAllSyncSnapshotsExeptTheCommonOne "${_ZFS}" "${_RECEIVERHOST}" "${_COMMON_SNAPSHOT}" \
+        && removeReceiverhostsSyncSnapshotsExeptTheCommonOne "${_ZFS}" "${_RECEIVERHOST}" "${_COMMON_SNAPSHOT}" \
         && zfs snapshot "${_NEW_SNAPSHOT}" \
         && zfs send -c -R -I "${_COMMON_SNAPSHOT}" "${_NEW_SNAPSHOT}" \
         && exit 0
 
 else
-    echo "Failure: At least one parameter is invalid" >&2
+    echo "Failure in sync-send.sh: At least one parameter is invalid." >&2
     exit 1
 fi
 
+echo "Failure in sync-send.sh: Something unexpected happend." >&2
 exit 1

@@ -23,7 +23,7 @@ function stopObsoleteScreenSession() {
     readonly _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _COMPOSITION _PID
 
     ! grep -qiE "^${_RECEIVERHOST}$" "${_DEFINITIONS}compositions/${_COMPOSITION}/${_SYNCHOSTS_FILE}" \
-        && echo "Stopping screen session of composition-sync: ${_COMPOSITION}" \
+        && echo "Stopping sync screen session of composition: ${_COMPOSITION}" \
         && screen -XS "${_PID}" quit
 }
 
@@ -45,7 +45,7 @@ function startMissingScreenSession() {
     readonly _COMPOSITION _SSH_PORT
 
     ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
-        && echo "Starting screen session of composition-sync: ${_COMPOSITION}" \
+        && echo "Starting screen sync session of composition: ${_COMPOSITION}" \
         && screen -dmS "compositionsync.${_COMPOSITION}" "${_SCRIPT}" --loop "${_COMPOSITION}" "${_SSH_PORT}"
 }
 
@@ -154,14 +154,17 @@ function receive() {
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
         ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_COMPOSITION}\" \"${_COMMON_SNAPSHOT#${_ZFS}@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
-        [ $? -ne 0 ] \
-            && echo "Unable to receive stream unsing these settings:" \
-            && echo "  - Sending host:     ${_SOURCEHOST}:${_SSH_PORT}" \
-            && echo "  - Receiving host:   ${_RECEIVERHOST}" \
-            && echo "  - Composition:      ${_COMPOSITION}" \
-            && echo "  - Offered snapshot: ${_COMMON_SNAPSHOT}" \
-            && echo "  - Resume token:     ${_RESUME_TOKEN}" \
-            && return 1
+        if [ $? -ne 0 ]; then
+            echo "Unable to receive stream unsing these settings:"
+            echo "  - Sending host:     ${_SOURCEHOST}:${_SSH_PORT}"
+            echo "  - Receiving host:   ${_RECEIVERHOST}"
+            echo "  - Composition:      ${_COMPOSITION}"
+            echo "  - Offered snapshot: ${_COMMON_SNAPSHOT}"
+            echo "  - Resume token:     ${_RESUME_TOKEN}"
+            echo "Current state of snapshots:"
+            zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
+            return 1
+        fi 
 
         protectZFS "${_ZFS}"
         removeForeignSyncSnapshots "${_RECEIVERHOST}" "${_ZFS}"
