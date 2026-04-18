@@ -13,7 +13,7 @@ function printNewestOrdinarySnapshot() {
         && echo "@${_RESULT}" \
         && return 0
 
-    echo "none"
+    echo "NOT AVAILABLE"
     return 1
 }
 
@@ -30,7 +30,7 @@ function printNewestSyncSnapshot() {
         && echo "@${_RESULT}" \
         && return 0
 
-    echo "none"
+    echo "NOT AVAILABLE"
     return 1
 }
 
@@ -38,23 +38,23 @@ function printFoundCommonSnapshot() {
     local _ZFS _RECEIVERHOST _COMMON_SNAPSHOT_CANDIDATE
     _ZFS="${1:?"printFoundCommonSnapshot(): Missing first parameter ZFS"}"
     _RECEIVERHOST="${2:?"printFoundCommonSnapshot(): Missing second parameter RECEIVERHOST"}"
-    _COMMON_SNAPSHOT_CANDIDATE="${3:?"printFoundCommonSnapshot(): Missing third parameter COMMON_SNAPSHOT_CANDIDATE"}"
+    _COMMON_SNAPSHOT_CANDIDATE="@${3#*@}"
     readonly _ZFS _RECEIVERHOST _COMMON_SNAPSHOT_CANDIDATE
 
-    # Nothing to do and nothing found
-    [ "${_COMMON_SNAPSHOT_CANDIDATE}" == "" ] \
-        && return 1
+    # Nothing to do
+    [ "${_COMMON_SNAPSHOT_CANDIDATE}" == "@" ] \
+        && return 0
 
     while read -r _ROW
     do
-        if [ "${_ROW}" == "${_ZFS}@${_COMMON_SNAPSHOT_CANDIDATE}" ]; then
+        if [ "${_ROW}" == "${_ZFS}${_COMMON_SNAPSHOT_CANDIDATE}" ]; then
             echo "${_ROW}"
             return 0
         fi
     done < <(zfs list -H -o name -S creation -t snapshot "${_ZFS}")
 
-    echo "No common snapshot found:" >&2
-    echo "  - snapshot candidate from receiver:   @${_COMMON_SNAPSHOT_CANDIDATE}" >&2
+    echo "Expected common snapshot not found:" >&2
+    echo "  - snapshot candidate from receiver:   ${_COMMON_SNAPSHOT_CANDIDATE}" >&2
     echo "  - newest ordinary snapshot of sender: $(printNewestOrdinarySnapshot "${_ZFS}" "${_RECEIVERHOST}")" >&2
     echo "  - newest sync snapshot of sender:     $(printNewestSyncSnapshot "${_ZFS}" "${_RECEIVERHOST}")" >&2
     return 1
