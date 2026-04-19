@@ -23,17 +23,18 @@ function checkPreconditions() {
     echo "Please create it and add all your custom monitoring checks there, following this convention: 'NAME_OF_THE_CHECK.on'"
     echo "A check has to be switched 'on' to be executed, so you can rename a check to 'NAME_OF_THE_CHECK.off' and it will be ignored."
     echo
-    echo "You can copy the file '/cis/script/monitor/checks/EXAMPLE_CHECK.off' to your check definitions folder and modify it."
+    echo "You can copy the file '/cis/definitions/default/checks/EXAMPLE_CHECK.off' to your check definitions folder and modify it."
     return 1
 }
 
 
 
 function printSelectedDefinition() {
-    local _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT
+    local _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT _SCRIPT_DEFINED_DEFAULT
     _FILE_DEFINED_DOMAIN="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/${1:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFINED_DEFAULT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/monitor/${1:?"Missing CURRENT_FULLFILE"}"
-    readonly _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT
+    _FILE_DEFINED_DEFAULT="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/default/monitor/${1:?"Missing CURRENT_FULLFILE"}"
+    _SCRIPT_DEFINED_DEFAULT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/monitor/${1:?"Missing CURRENT_FULLFILE"}"
+    readonly _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT _SCRIPT_DEFINED_DEFAULT
 
     [ -s "${_FILE_DEFINED_DOMAIN}" ] \
         && echo "${_FILE_DEFINED_DOMAIN}" \
@@ -41,6 +42,10 @@ function printSelectedDefinition() {
 
     [ -s "${_FILE_DEFINED_DEFAULT}" ] \
         && echo "${_FILE_DEFINED_DEFAULT}" \
+        && return 0
+
+    [ -s "${_SCRIPT_DEFINED_DEFAULT}" ] \
+        && echo "${_SCRIPT_DEFINED_DEFAULT}" \
         && return 0
 
     return 1
