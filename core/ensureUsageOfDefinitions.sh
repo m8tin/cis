@@ -53,14 +53,15 @@ function filterInvalidAuthorizedKeysFilesOfRoot() {
 }
 
 function printSelectedDefinition() {
-    local _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    local _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFAULT_ALL_HOSTS _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
     _DEFINITIONS="${1:?"Missing CIS_ROOT"}definitions/${2:?"Missing DOMAIN"}/"
     _CORE_FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/core/all${3:?"Missing CURRENT_FULLFILE"}"
     _CORE_FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}core/all${3:?"Missing CURRENT_FULLFILE"}"
     _CORE_FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}core/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
+    _FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/script/all${3:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/all${3:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
-    readonly _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    readonly _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFAULT_ALL_HOSTS _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
 
     #The following are special definitions that affect the core functionality.
     #Try this host first because it should be priorized.
@@ -90,6 +91,11 @@ function printSelectedDefinition() {
     ! isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
         && [ -s "${_FILE_DEFINED_ALL_HOSTS}" ] \
         && echo "${_FILE_DEFINED_ALL_HOSTS}" \
+        && return 0
+
+    ! isCoreDefinition "${3:?"Missing CURRENT_FULLFILE"}" \
+        && [ -s "${_FILE_DEFAULT_ALL_HOSTS}" ] \
+        && echo "${_FILE_DEFAULT_ALL_HOSTS}" \
         && return 0
 
     return 1
@@ -155,6 +161,7 @@ function ensureUsageOfDefinitions() {
     readonly _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
 
     [ -z "${_DEFINED_FULLFILE}" ] \
+        && isCoreDefinition "${_CURRENT_FULLFILE}" \
         && echo \
         && echo "URGENT WARNING: If an 'authorized_keys' file of root is replaced by an invalid version," \
         && echo "                you may lose access to this host!" \

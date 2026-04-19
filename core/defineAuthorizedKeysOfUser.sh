@@ -49,6 +49,14 @@ function prepareFolder() {
         && echo "  - '${_SSH_FOLDER}'" \
         && return 0
 
+    #The ssh folder already exists but ownership and access rights needs to be repaired
+    [ -d "${_SSH_FOLDER}" ] \
+        && chown "${_USER}:${_USER}" "${_SSH_FOLDER}" \
+        && chmod go-rwx "${_SSH_FOLDER}" \
+        && echo "SUCCESS: The existing ssh folder was repaired:     ("$(readlink -f ${0})")" \
+        && echo "  - '${_SSH_FOLDER}'" \
+        && return 0
+
     echo "FAIL: The ssh folder could not be prepared:        ("$(readlink -f ${0})")" >&2
     echo "  - '${_SSH_FOLDER}'" >&2
     echo "  - due to an error or insufficient rights." >&2
