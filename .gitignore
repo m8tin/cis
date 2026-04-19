@@ -15,6 +15,9 @@
 !/definitions/default/monitor/
 /definitions/default/monitor/*
 !/definitions/default/monitor/checks/
+!/definitions/default/script/
+/definitions/default/script/*
+!/definitions/default/script/all/
 
 # 2.) Ignore all content of 'states', except file README.md
 /states/*
