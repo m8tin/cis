@@ -1,15 +1,11 @@
 #!/bin/bash
+source ${CUSTOM_CIS_ROOT:-/}./cis/core/base.module.sh
+
+
 
 [ "$(id -u)" != "0" ] \
     && sudo "${0}" "${1}" \
     && exit 0
-
-
-
-# Folders always ends with an tailing '/'
-_SETUP="$(readlink -f "${0}" 2> /dev/null)"
-_CIS_ROOT="${_SETUP%/setupCoreOntoThisHost.sh}/"             #Removes shortest matching pattern '/setupCoreOntoThisHost.sh' from the end
-_CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
 
 
 
@@ -51,7 +47,7 @@ function checkPreconditions() {
     ! [ -z "${_DOMAIN}" ] \
         && checkPathsAreAvaiable \
         && checkGitIsAvailable \
-        && git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" pull &> /dev/null \
+        && git -C "${CIS[ROOT]:?"Missing CIS_ROOT"}" pull &> /dev/null \
         && return 0
 
     echo
@@ -75,9 +71,9 @@ function checkPreconditions() {
 
 function getOrSetDomain() {
     local _CURRENT_DOMAIN _GIVEN_DOMAIN _OVERRIDE_DOMAIN_FILE
-    _CURRENT_DOMAIN="$("${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}printOwnDomain.sh")"
+    _CURRENT_DOMAIN="${CIS[DOMAIN]:?"Missing CIS_DOMAIN"}"
     _GIVEN_DOMAIN="${1}" # Optional parameter DOMAIN
-    _OVERRIDE_DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
+    _OVERRIDE_DOMAIN_FILE="${CIS[ROOT]:?"Missing CIS_ROOT"}overrideOwnDomain"
     readonly _CURRENT_DOMAIN _GIVEN_DOMAIN _OVERRIDE_DOMAIN_FILE
 
     ! [ -z "${_CURRENT_DOMAIN}" ] \
@@ -109,8 +105,10 @@ function getOrSetDomain() {
 }
 
 function getRemoteRepositoryPath() {
-    _REPOSITORY="$(git -C "${_CIS_ROOT:?"Missing CIS_ROOT"}" config --get remote.origin.url 2> /dev/null | grep -i 'git@')"
-    _PATH="${_REPOSITORY%/*}"                        #Removes shortest matching pattern '/*' from the end
+    local _REPOSITORY="$(git -C "${CIS[ROOT]:?"Missing CIS_ROOT"}" config --get remote.origin.url 2> /dev/null | grep -i 'git@')"
+    local _PATH="${_REPOSITORY%/*}"                        #Removes shortest matching pattern '/*' from the end
+    readonly _REPOSITORY _PATH
+
     ! [ -z "${_PATH}" ] \
         && echo "${_PATH}/" \
         && return 0
@@ -119,22 +117,21 @@ function getRemoteRepositoryPath() {
 }
 
 function addDefinition(){
-    local _DEFINITIONS _REPOSITORY
-    _DEFINITIONS="${1:?"Missing first parameter DEFINITIONS"}"
-    _REPOSITORY="$(getRemoteRepositoryPath)cis-definition-${2:?"Missing second parameter DOMAIN"}.git"
-    readonly _DEFINITIONS _REPOSITORY
+    local _REPOSITORY
+    _REPOSITORY="$(getRemoteRepositoryPath)cis-definition-${CIS[DOMAIN]}.git"
+    readonly _REPOSITORY
 
     [ "$(id -u)" == "0" ] \
         && echo \
         && echo "Running setup as 'root' trying to add definition repository:" \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" readonly "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINDEFINITIONS]}" readonly "${_REPOSITORY}" \
         && echo "  - definitions are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
         && echo \
         && echo "Running setup as 'user' trying to add definition repository:" \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_DEFINITIONS}" writable "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINDEFINITIONS]}" writable "${_REPOSITORY}" \
         && echo "  - definitions are usable, as working copy." \
         && return 0
 
@@ -142,22 +139,21 @@ function addDefinition(){
 }
 
 function addState() {
-    local _STATES _REPOSITORY
-    _STATES="${1:?"Missing first parameter STATES"}"
-    _REPOSITORY="$(getRemoteRepositoryPath)cis-state-${2:?"Missing second parameter DOMAIN"}.git"
-    readonly _STATES _REPOSITORY
+    local _REPOSITORY
+    _REPOSITORY="$(getRemoteRepositoryPath)cis-state-${CIS[DOMAIN]}.git"
+    readonly _REPOSITORY
 
     [ "$(id -u)" == "0" ] \
         && echo \
         && echo "Running setup as 'root' trying to add state repository:" \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINSTATES]}" writable "${_REPOSITORY}" \
         && echo "  - states are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
         && echo \
         && echo "Running setup as 'user' trying to add state repository:" \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${_STATES}" writable "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINSTATES]}" writable "${_REPOSITORY}" \
         && echo "  - states are usable, as working copy." \
         && return 0
 
@@ -165,10 +161,9 @@ function addState() {
 }
 
 function setupCoreFunctionality() {
-    local _DEFINITIONS _MINUTE_FROM_OWN_IP
-    _DEFINITIONS="${1:?"Missing DEFINITIONS: 'ROOT/definitions/DOMAIN'"}"
+    local _MINUTE_FROM_OWN_IP
     _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F '.' | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
-    readonly _DEFINITIONS _MINUTE_FROM_OWN_IP
+    readonly _MINUTE_FROM_OWN_IP
 
     [ "$(id -u)" != "0" ] \
         && echo \
@@ -177,38 +172,34 @@ function setupCoreFunctionality() {
 
     [ "$(id -u)" == "0" ] \
         && echo \
-        && echo "Using definitions: '${_DEFINITIONS:?"Missing DEFINITIONS"}' ..." \
+        && echo "Using definitions: '${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}' ..." \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${_DEFINITIONS}" root \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${CIS[DOMAINDEFINITIONS]}" root \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" /etc/adduser.conf \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${CIS[DOMAINDEFINITIONS]}" /etc/adduser.conf \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addNormalUser.sh" jenkins \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addNormalUser.sh" jenkins \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${_DEFINITIONS}" jenkins \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${CIS[DOMAINDEFINITIONS]}" jenkins \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" /etc/sudoers.d/allow-jenkins-updateRepositories \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${CIS[DOMAINDEFINITIONS]}" /etc/sudoers.d/allow-jenkins-updateRepositories \
         && echo \
-        && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}addToCrontabEveryHour.sh" "${_SETUP:?"Missing SETUP"}" "${_MINUTE_FROM_OWN_IP}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addToCrontabEveryHour.sh" "${CIS[FULLSCRIPTNAME]:?"Missing FULLSCRIPTNAME"}" "${_MINUTE_FROM_OWN_IP}" \
         && return 0
 
     return 1
 }
 
 function setup() {
-    local _DEFINITIONS _DOMAIN _STATES
-    _DOMAIN="$(getOrSetDomain "${1}")"
+    local _DOMAIN="$(getOrSetDomain "${1}")"
+    readonly _DOMAIN
 
     ! checkPreconditions "${_DOMAIN}" \
         && return 1
 
-    _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
-    _STATES="${_CIS_ROOT:?"Missing CIS_ROOT"}states/${_DOMAIN:?"Missing DOMAIN"}"
-    readonly _DEFINITIONS _DOMAIN _STATES
-
-    addDefinition "${_DEFINITIONS:?"Missing DEFINITIONS"}" "${_DOMAIN:?"Missing DOMAIN"}" \
-        && addState "${_STATES:?"Missing STATES"}" "${_DOMAIN:?"Missing DOMAIN"}" \
-        && setupCoreFunctionality "${_DEFINITIONS:?"Missing DEFINITIONS"}" \
+    addDefinition \
+        && addState \
+        && setupCoreFunctionality \
         && return 0
 
     echo "FAIL: setup is incomplete:                         ("$(readlink -f ${0})")" >&2
@@ -216,27 +207,11 @@ function setup() {
     return 1
 }
 
-function isValid() {
-    # printf '%s'
-    #  - always treats the contents of ${1} as pure plain text.
-    # grep -qE: checks RegExp, but quiet
-    printf '%s' "${1}" | grep -qE "${2:?"isValid(): Missing REGEXP"}"
-}
-
-function isValidOptional() {
-    [ -z "${1}" ] || isValid "${1}" "${2}"
-}
 
 
-
-# Parameter 1: Only alphanumeric characters allowed and [.-] if not leading (due to: -oProxyCommand=...).
-if isValidOptional "${1}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
-then
-    setup "${1}" \
-        && exit 0
-else
-    echo "Failure: At least one parameter is invalid" >&2
-    exit 1
-fi
+# Parameter 1: is optional '()?' and only alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
+base.set DOMAIN "${1}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)?$' || exit 1
+setup "${DOMAIN}" \
+    && exit 0
 
 exit 1

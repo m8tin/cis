@@ -5,10 +5,45 @@
     && echo "so this script is allowed to be executed if you are root only." \
     && exit 1
 
+function goOn() {
+    local _QUESTION="${1:?"goOn(): Mising first parameter QUESTION"}"
+    local _TIPP="${2}"
+    local _ANSWER
+
+    read -p "${_QUESTION}: [y]es or [n]o : " _ANSWER
+    [ "${_ANSWER}" == "y" ] && return 0
+    [ "${_ANSWER}" == "Y" ] && return 0
+    [ "${_ANSWER}" == "yes" ] && return 0
+    [ "${_ANSWER}" == "Yes" ] && return 0
+    [ "${_ANSWER}" == "YES" ] && return 0
+
+    echo
+    echo "${_TIPP}"
+    echo
+    return 1
+}
+
 function setNeededHostnameOrExit() {
-    _FQDN="${1:?"Missing unique long hostname (fqdn, eg.: host1.example.net) for this host as first parameter."}"
+    _FQDN="${1}"
+
+    [ -z "${_FQDN}" ] \
+        && ! echo "$(hostname -b)" | grep -q -F '.' \
+        && echo "This host needs a unique long hostname (fqdn, eg.: host1.example.net)" \
+        && echo "Call this script with a full qualified domain name as first parameter." \
+        && exit 1
+
+    [ -z "${_FQDN}" ] \
+        && echo "$(hostname -b)" | grep -q -F '.' \
+        && echo "The name of this host is: $(hostname -b)" \
+        && goOn "Is this correct?" "Restart this script with a full qualified domain name as first parameter." \
+        && return 0
+
+    [ "${_FQDN}" == "$(hostname -b)" ] \
+        && echo "Name of this host already is: $(hostname -b)" \
+        && return 0
 
     echo "${_FQDN}" | grep -F '.' &> /dev/null \
+        && "Setting name of this host to: ${_FQDN}" \
         && hostnamectl set-hostname "${_FQDN}" \
         && return 0
 
@@ -17,12 +52,16 @@ function setNeededHostnameOrExit() {
     exit 1
 }
 
-function printOrGenerateSSHKeysForRoot() {
+function printOrGenerateSSHKeys() {
     git --version > /dev/null || (apt update; apt upgrade -y; apt install git)
 
+    local _FULL_USERNAME="$(whoami)@$(hostname -b)"
+    local _PUBKEY_FILE=~/.ssh/id_ed25519.pub
+
     echo
-    echo "Public SSH-Key for root@$(hostname -b):"
-    cat "/root/.ssh/id_ed25519.pub" \
+    echo "Printing public SSH-Key of ${_FULL_USERNAME}:"
+    echo "  - Content of '${_PUBKEY_FILE}':"
+    cat "${_PUBKEY_FILE}" \
         && return 0
 
     # -t    type of the key pair
@@ -32,19 +71,19 @@ function printOrGenerateSSHKeysForRoot() {
     # -C    defines a comment
     ssh-keygen \
         -t ed25519 \
-        -f "/root/.ssh/id_ed25519" -q -N "" \
-        -C "$(date +%Y%m%d)-root@$(hostname -b)"
+        -f "${_PUBKEY_FILE}" -q -N "" \
+        -C "$(date +%Y%m%d)-${_FULL_USERNAME}"
 
-    cat "/root/.ssh/id_ed25519.pub" \
+    cat "${_PUBKEY_FILE}" \
         && return 0
 
     echo
-    echo "FAILED: somthing went wrong during the generation the ssh keys."
+    echo "FAILED: somthing went wrong during the generation the ssh keys for '${_FULL_USERNAME}'."
     echo "        These keys are mandantory. You can try to restart this script."
     echo
 }
 
-function showFurtherSteps() {}
+function showFurtherSteps() {
     echo
     echo "IMPORTANT: It is assumed that repositories for definitions and states already exist"
     echo "           and comply with the naming convention."
@@ -66,7 +105,7 @@ function showFurtherSteps() {}
 
 # sanitizes all parameters
 setNeededHostnameOrExit "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    && printOrGenerateSSHKeysForRoot \
+    && printOrGenerateSSHKeys \
     && showFurtherSteps \
     && exit 0
 
