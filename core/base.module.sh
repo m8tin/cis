@@ -58,7 +58,7 @@ function checkScriptforCorrectAssignments() {
     return 1
 }
 
-function prepare.setCIS(){
+function prepare.setCIS() {
     # Check precondition
     [[ "${CIS[SET]:+isset}" != "isset" ]] \
         && base.abort "Array CIS was not initialized correctly."
@@ -113,7 +113,7 @@ function prepare.setCIS(){
     return 0
 }
 
-function prepare.setCOLOR(){
+function prepare.setCOLOR() {
     # Check the procondition,
     [[ "${COLOR[SET]:+isset}" != "isset" ]] \
         && base.abort "Array COLOR was not initialized correctly."
@@ -139,7 +139,7 @@ function prepare.setCOLOR(){
     return 0
 }
 
-function prepare.setPATH(){
+function prepare.setPATH() {
     local _GREP_PATH
     _GREP_PATH="${1:?"Missing parameter GREP_PATH"}"
     readonly _GREP_PATH
@@ -156,7 +156,7 @@ function prepare.setPATH(){
     return 1
 }
 
-function base.abort(){
+function base.abort() {
     # Minimalmode in case of emergency
     [[ "${COLOR[SET]:+isset}" != "isset" ]] \
         && printf %b "\nScript aborted during preparation (State: '${CIS[SET]:-""}')!\n" >&2  \
@@ -191,7 +191,7 @@ function base.abort(){
     exit 1
 }
 
-function base.filterComments(){
+function base.filterComments() {
     local _FILENAME
     _FILENAME="${1:?"base.filterComments() Missing first parameter FILENAME"}"
     readonly _FILENAME
@@ -203,9 +203,7 @@ function base.filterComments(){
     return 1
 }
 
-# Funktionen von Module, die mit dieser Funktion geladen werden, behalten ihren Name.
-# Deshalb dürfen solche Funktionen auch nicht per '→ FunktionsName' aufgerufen werden!
-function base.loadModule(){
+function base.loadModule() {
     local _MODULENAME _MODULEFULLNAME
     _MODULENAME="${1:?"Function base.loadModule(): Missing parameter MODULENAME."}"
     _MODULEFULLNAME="${CIS[MODULEDIR]:?"Function base.loadModule(): Missing CISMODULEDIR."}/${_MODULENAME}.module.sh"
@@ -257,7 +255,24 @@ function base.log() {
     esac
 }
 
-function base.printModuleFunctions(){
+function base.printEnvironment() {
+    # Check precondition
+    [[ "${CIS[SET]:+isset}" != "isset" ]] \
+        && declare -A -g CIS=([SET]=unprepared) \
+        && prepare.setCIS
+
+    [[ "${CIS[SET]:+isset}" != "isset" ]] \
+        && return 1
+
+    echo "Content of array CIS:"
+    echo "---------------------"
+    for _KEY in "${!CIS[@]}"; do
+        printf "  %s\n" "CIS[${_KEY}]: ${CIS[${_KEY}]}\n"
+    done
+    return 0
+}
+
+function base.printModuleFunctions() {
     local _MODULENAME
     _MODULENAME="${1:?"Function base.printModuleFunctions(): Missing parameter MODULENAME."}"
     readonly _MODULENAME
@@ -323,14 +338,18 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo "FAILURE: you are using this module 'base.sh' in a wrong way."
     echo "    It is intended as a utility library and should not be called directly."
     echo
-    echo "Usage: Call the base module at the beginning of your script e.g. like this:"
+    echo "Usage: Call the base module at the beginning of your script, like this:"
+    echo "-----------------------------------------------------------------------"
     echo
-    echo '    #!/bin/bash'
-    echo '    source /cis/core/base.module.sh'
+    echo '#!/bin/bash'
+    echo 'source /cis/core/base.module.sh'
+    echo
+    echo
+    base.printEnvironment
     echo
     echo "Now you can use the functions provided by this module inside your script:"
     echo "-------------------------------------------------------------------------"
-    declare -F | grep "base." | cut -d" " -f3
+    declare -F | grep "base." | cut -d" " -f3 | xargs -n1 printf "  %s\n"
     exit 1
 else
     # If not exists, define a global array 'COLOR'
