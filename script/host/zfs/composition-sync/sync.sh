@@ -1,20 +1,17 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
-# Folders always ends with an tailing '/'
-_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_CIS_ROOT="${_SCRIPT%/script/host/zfs/composition-sync/sync.sh}/"  #Removes shortest matching pattern '/script/host/zfs/composition-sync/sync.sh' from the end
-_DOMAIN="$("${_CIS_ROOT:?"Missing CIS_ROOT"}core/printOwnDomain.sh")"
-_DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/"
 
 
 function stopObsoleteScreenSession() {
-    local _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _COMPOSITION _PID
+    local _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _DEFINITIONS _COMPOSITION _PID
     _RECEIVERHOST="${1:?"stopObsoleteScreenSession(): Missing first parameter RECEIVERHOST"}"
     _SYNCHOSTS_FILE="${2:?"stopObsoleteScreenSession(): Missing second parameter SYNCHOSTS_FILE"}"
     _SCREEN_SESSION="${3:?"stopObsoleteScreenSession(): Missing third parameter SCREEN_SESSION"}"
-    _COMPOSITION=$(echo "$_SCREEN_SESSION" | grep -oE "[^.]+$")
+    _DEFINITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}"
+    _COMPOSITION=$(echo "$_SCREEN_SESSION" | grep -oE "[^:]+$")
     _PID=$(echo "$_SCREEN_SESSION" | grep -oE "^[0-9]+")
-    readonly _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _COMPOSITION _PID
+    readonly _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _DEFINITIONS _COMPOSITION _PID
 
     ! grep -qiE "^${_RECEIVERHOST}$" "${_DEFINITIONS}compositions/${_COMPOSITION}/${_SYNCHOSTS_FILE}" \
         && echo "Stopping sync screen session of composition: ${_COMPOSITION}" \
@@ -27,27 +24,29 @@ function cleanSessions() {
     _SYNCHOSTS_FILE="${2:?"cleanSessions(): Missing second parameter SYNCHOSTS_FILE"}"
     readonly _RECEIVERHOST _SYNCHOSTS_FILE
 
-    screen -ls | grep -oE "[0-9]+\.compositionsync\.[a-zA-Z0-9_-]+" | while read -r _SCREEN_SESSION; do
+    screen -ls | grep -oE "[0-9]+\.composition-sync\:[a-zA-Z0-9_-]+" | while read -r _SCREEN_SESSION; do
         stopObsoleteScreenSession "${_RECEIVERHOST}" "${_SYNCHOSTS_FILE}" "${_SCREEN_SESSION}"
     done
 }
 
 function startMissingScreenSession() {
-    local _COMPOSITION _SSH_PORT
+    local _COMPOSITION _SSH_PORT _SCRIPT
     _COMPOSITION="${1:?"startMissingScreenSession(): Missing first parameter COMPOSITION"}"
     _SSH_PORT="${2:-22}"
-    readonly _COMPOSITION _SSH_PORT
+    _SCRIPT="${CIS[FULLSCRIPTNAME]:?"startMissingScreenSession(): Missing CIS_FULLSCRIPTNAME"}"
+    readonly _COMPOSITION _SSH_PORT _SCRIPT
 
     ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
         && echo "Starting screen sync session of composition: ${_COMPOSITION}" \
-        && screen -dmS "compositionsync.${_COMPOSITION}" "${_SCRIPT}" --loop "${_COMPOSITION}" "${_SSH_PORT}"
+        && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loop "${_COMPOSITION}" "${_SSH_PORT}"
 }
 
 function addSessions() {
-    local _RECEIVERHOST _SYNCHOSTS_FILE
+    local _RECEIVERHOST _SYNCHOSTS_FILE _DEFINITIONS
     _RECEIVERHOST="${1:?"addSessions(): Missing first parameter RECEIVERHOST"}"
     _SYNCHOSTS_FILE="${2:?"addSessions(): Missing second parameter SYNCHOSTS_FILE"}"
-    readonly _RECEIVERHOST _SYNCHOSTS_FILE
+    _DEFINITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}"
+    readonly _RECEIVERHOST _SYNCHOSTS_FILE _DEFINITIONS
 
     local _COMPOSITION
     grep -lrE "^${_RECEIVERHOST}" ${_DEFINITIONS}compositions/*/${_SYNCHOSTS_FILE} | while read -r _CURRENT_SYNCHOSTS_FILE; do
@@ -120,19 +119,19 @@ function removeOutdatedSyncSnapshots() {
 }
 
 function receive() {
-    local _RECEIVERHOST _COMPOSITION _SEND_SCRIPT
+    local _RECEIVERHOST _COMPOSITION _SSH_PORT _DEFINITIONS  _SOURCEHOST _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
     _RECEIVERHOST="${1:?"receive(): Missing first parameter RECEIVERHOST"}"
     _COMPOSITION="${2:?"receive(): Missing second parameter COMPOSITION"}"
-    _SEND_SCRIPT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/host/zfs/composition-sync/sync-send.sh"
-    readonly _RECEIVERHOST _COMPOSITION _SEND_SCRIPT
-
+    _SSH_PORT="${3:-22}"
+    _SOURCEHOST=$(cat "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host")
+    _SSH_COMMAND="ssh -p ${_SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -C composition-sync@${_SOURCEHOST}"
+    _SEND_SCRIPT="${CIS[SCRIPTSROOT]:?"Missing CIS_SCRIPTSROOT"}host/zfs/composition-sync/sync-send.sh"
+    _ZFS_BRANCH=$(cat "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/zfs-branch")
+    _ZFS_BRANCH="${_ZFS_BRANCH:-zpool1/persistent}"
+    _ZFS="${_ZFS_BRANCH%/}/${_COMPOSITION}-BACKUP"
+    readonly _RECEIVERHOST _COMPOSITION _SSH_PORT _DEFINITIONS _SOURCEHOST _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
     (
         flock -n 9 || exit 1
-
-        _SOURCEHOST=$(cat ${_DEFINITIONS}compositions/${_COMPOSITION}/current-host)
-
-        _ZFS="zpool1/persistent/${_COMPOSITION}-BACKUP"
-        _SSH_COMMAND="ssh -p ${_SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -C composition-sync@${_SOURCEHOST}"
 
         _COMMON_SNAPSHOT=""
         _RESUME_TOKEN=$(zfs get -H -o value receive_resume_token "${_ZFS}" 2> /dev/null)
@@ -174,12 +173,13 @@ function receive() {
 }
 
 function tryRollbackToRepair() {
-    local _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
-    _RECEIVERHOST="${1:?"tryRollbackToRepair(): Missing first parameter RECEIVERHOST"}"
-    _ZFS="${2:?"tryRollbackToRepair(): Missing second parameter ZFS"}"
-    _ROLLBACK_DAY=$(head -n 1 "${_DEFINITIONS:?"Missing DEFINITIONS"}/compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
-    _ROLLBACK_SNAPSHOT=$(zfs list -t snapshot -H -o name -S creation "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
-    readonly _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
+    local _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
+    _COMPOSITION="${1:?"tryRollbackToRepair(): Missing first parameter COMPOSITION"}"
+    _RECEIVERHOST="${2:?"tryRollbackToRepair(): Missing second parameter RECEIVERHOST"}"
+    _ZFS="${3:?"tryRollbackToRepair(): Missing third parameter ZFS"}"
+    _ROLLBACK_DAY=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
+    _ROLLBACK_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
+    readonly _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
 
     # Nothing to do
     [ -z "${_ROLLBACK_SNAPSHOT}" ] && return 0
@@ -194,11 +194,14 @@ function tryRollbackToRepair() {
 }
 
 
-
-MODE=$(echo "${1:?"MODE missing [--all, --once, --loop]"}" | sed -E 's|[^a-zA-Z0-9_-]*||g')
-COMPOSITION=$(echo "${2}" | sed -E 's|[^a-zA-Z0-9_-]*||g')
-RECEIVERHOST=$(hostname -b)
-_SSH_PORT=$(echo "${3:-22}" | sed -E 's/[^0-9]//g')
+# Parameter 1: only one of these values are allowed (--all, --once, --loop)
+# Parameter 2: is optional '()?' and only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
+# Parameter 3: only digests between 10-99999 are allowed
+# Value 4    : only a subset of alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
+base.set MODE "${1}" '^(--all|--once|--loop)$'
+base.set COMPOSITION "${2}" '^([a-zA-Z0-9][a-zA-Z0-9_-]*)?$'
+base.set SSH_PORT "${3:-22}" '^[1-9][0-9]{1,4}$'
+base.set RECEIVERHOST "$(hostname -b)" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
 
 [ "${MODE}" == "--all" ] \
     && cleanSessions "${RECEIVERHOST}" composition-sync-hosts \
@@ -206,11 +209,11 @@ _SSH_PORT=$(echo "${3:-22}" | sed -E 's/[^0-9]//g')
     && exit 0
 
 [ "${MODE}" == "--once" ] \
-    && receive "${RECEIVERHOST}" "${COMPOSITION}" \
+    && receive "${RECEIVERHOST}" "${COMPOSITION}" "${SSH_PORT}" \
     && exit 0
 
 [ "${MODE}" == "--loop" ] && while true; do
-    receive "${RECEIVERHOST}" "${COMPOSITION}" \
+    receive "${RECEIVERHOST}" "${COMPOSITION}" "${SSH_PORT}" \
         && echo "Sleep for 5s" \
         && sleep 5 \
         && echo \
