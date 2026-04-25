@@ -264,10 +264,10 @@ function base.printEnvironment() {
     [[ "${CIS[SET]:+isset}" != "isset" ]] \
         && return 1
 
-    echo "Content of array CIS:"
-    echo "---------------------"
+    echo "Content of array CIS: (all folders end with an tailing '/')"
+    echo "-----------------------------------------------------------"
     for _KEY in "${!CIS[@]}"; do
-        printf "  %s\n" "CIS[${_KEY}]: ${CIS[${_KEY}]}\n"
+        printf "  %s\n" "CIS[${_KEY}]: ${CIS[${_KEY}]}"
     done
     return 0
 }
