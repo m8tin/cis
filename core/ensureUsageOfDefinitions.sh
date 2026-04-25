@@ -58,7 +58,7 @@ function printSelectedDefinition() {
     _CORE_FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/core/all${3:?"Missing CURRENT_FULLFILE"}"
     _CORE_FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}core/all${3:?"Missing CURRENT_FULLFILE"}"
     _CORE_FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}core/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/script/all${3:?"Missing CURRENT_FULLFILE"}"
+    _FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/hosts/all${3:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/all${3:?"Missing CURRENT_FULLFILE"}"
     _FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
     readonly _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFAULT_ALL_HOSTS _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST

@@ -12,12 +12,12 @@
 !/definitions/default/core/
 /definitions/default/core/*
 !/definitions/default/core/all/
+!/definitions/default/hosts/
+/definitions/default/hosts/*
+!/definitions/default/hosts/all/
 !/definitions/default/monitor/
 /definitions/default/monitor/*
 !/definitions/default/monitor/checks/
-!/definitions/default/script/
-/definitions/default/script/*
-!/definitions/default/script/all/
 
 # 2.) Ignore all content of 'states', except file README.md
 /states/*
