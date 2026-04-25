@@ -1,4 +1,7 @@
 #!/bin/bash
+source /cis/core/base.module.sh
+
+
 
 function printNewestOrdinarySnapshot() {
     local _ZFS _RECEIVERHOST
@@ -84,21 +87,39 @@ function sendResume() {
     _RESUME_TOKEN="${1:?"sendResume(): Missing first parameter RESUME_TOKEN"}"
     readonly _RESUME_TOKEN
 
-    zfs send -t "${RESUME_TOKEN}" \
+    zfs send -t "${_RESUME_TOKEN:?"Missing RESUME_TOKEN"}" \
         && return 0
 
     return 1
 }
 
-function isValid() {
-    # printf '%s'
-    #  - always treats the contents of ${1} as pure plain text.
-    # grep -qE: checks RegExp, but quiet
-    printf '%s' "${1}" | grep -qE "${2:?"isValid(): Missing REGEXP"}"
-}
+function send() {
+    local _COMPOSITION _RECEIVERHOST _RECEIVERS_SNAPSHOT _NOW _ZFS _NEW_SNAPSHOT
+    _COMPOSITION="${1:?"send(): Missing first parameter COMPOSITION"}"
+    _RECEIVERHOST="${2:?"send(): Missing second parameter RECEIVERHOST"}"
+    _RECEIVERS_SNAPSHOT="${3}"
+    _NOW=$(date -u "+%Y-%m-%d_%H:%M:%SZ")
+    _ZFS="zpool1/persistent/${_COMPOSITION:?"Missing COMPOSITION"}"
+    _NEW_SNAPSHOT="${_ZFS:?"Missing ZFS"}@SYNC_${_RECEIVERHOST:?"Missing RECEIVERHOST"}_${_NOW:?"Missing NOW"}"
+    readonly _COMPOSITION _RECEIVERHOST _RECEIVERS_SNAPSHOT _NOW _ZFS _NEW_SNAPSHOT
 
-function isValidOptional() {
-    [ -z "${1}" ] || isValid "${1}" "${2}"
+    # This common snapshot is the starting-point, if available.
+    ! _COMMON_SNAPSHOT=$(printFoundCommonSnapshot "${_ZFS}" "${_RECEIVERHOST}" "${_RECEIVERS_SNAPSHOT}") \
+        && echo "Failure in sync-send.sh: abort" >&2 \
+        && return 1
+
+    [ "${_COMMON_SNAPSHOT}" == "" ] \
+        && zfs snapshot "${_NEW_SNAPSHOT}" \
+        && zfs send -c -R "${_NEW_SNAPSHOT}" \
+        && return 0
+
+    [ "${_COMMON_SNAPSHOT}" != "" ] \
+        && removeReceiverhostsSyncSnapshotsExeptTheCommonOne "${_ZFS}" "${_RECEIVERHOST}" "${_COMMON_SNAPSHOT}" \
+        && zfs snapshot "${_NEW_SNAPSHOT}" \
+        && zfs send -c -R -I "${_COMMON_SNAPSHOT}" "${_NEW_SNAPSHOT}" \
+        && return 0
+
+    return 1
 }
 
 
@@ -107,48 +128,21 @@ function isValidOptional() {
 # Parameter 2: Only alphanumeric characters allowed and [.-]   if not leading (due to: -oProxyCommand=...).
 # Parameter 3: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
 # Parameter 4: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
-if isValid "${1:?"RECEIVERHOST missing"}" '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' \
-    && isValid "${2:?"COMPOSITION missing"}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' \
-    && isValidOptional "${3}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$' \
-    && isValidOptional "${4}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$'
-then
-    _RECEIVERHOST="${1}"
-    _COMPOSITION="${2}"
-    _RECEIVERS_SNAPSHOT="${3}"
-    _RESUME_TOKEN="${4}"
+base.set RECEIVERHOST "${1}" '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' || exit 1
+base.set COMPOSITION "${2}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' || exit 1
+base.set RECEIVERS_SNAPSHOT "${3}" '(^[a-zA-Z0-9][a-zA-Z0-9._:-]*$)?' || exit 1
+base.set RESUME_TOKEN "${4}" '(^[a-zA-Z0-9][a-zA-Z0-9._:-]*$)?' || exit 1
 
-    _NOW=$(date -u "+%Y-%m-%d_%H:%M:%S")
-    _ZFS="zpool1/persistent/${_COMPOSITION:?"COMPOSITION missing"}"
-    _NEW_SNAPSHOT="${_ZFS:?"ZFS missing"}@SYNC_${_RECEIVERHOST:?"RECEIVERHOST missing"}_${_NOW:?"NOW missing"}"
+# Resume mode
+if [ "${RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
+    sendResume "${RESUME_TOKEN}"
 
-    # Resume mode
-    if [ "${_RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
-        sendResume "${_RESUME_TOKEN}"
-
-        # Exit preserving the code 
-        exit $?
-    fi
-
-    # This common snapshot is the starting-point, if available.
-    ! _COMMON_SNAPSHOT=$(printFoundCommonSnapshot "${_ZFS}" "${_RECEIVERHOST}" "${_RECEIVERS_SNAPSHOT}") \
-        && echo "Failure in sync-send.sh: abort" >&2 \
-        && exit 1
-
-    [ "${_COMMON_SNAPSHOT}" == "" ] \
-        && zfs snapshot "${_NEW_SNAPSHOT}" \
-        && zfs send -c -R "${_NEW_SNAPSHOT}" \
-        && exit 0
-
-    [ "${_COMMON_SNAPSHOT}" != "" ] \
-        && removeReceiverhostsSyncSnapshotsExeptTheCommonOne "${_ZFS}" "${_RECEIVERHOST}" "${_COMMON_SNAPSHOT}" \
-        && zfs snapshot "${_NEW_SNAPSHOT}" \
-        && zfs send -c -R -I "${_COMMON_SNAPSHOT}" "${_NEW_SNAPSHOT}" \
-        && exit 0
-
-else
-    echo "Failure in sync-send.sh: At least one parameter is invalid." >&2
-    exit 1
+    # Exit preserving the code
+    exit $?
 fi
+
+send "${COMPOSITION}" "${RECEIVERHOST}" "${RECEIVERS_SNAPSHOT}" \
+    && exit 0
 
 echo "Failure in sync-send.sh: Something unexpected happend." >&2
 exit 1

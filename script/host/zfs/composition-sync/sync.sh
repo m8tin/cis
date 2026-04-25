@@ -1,17 +1,11 @@
 #!/bin/bash
 
-_MODE=$(echo "${1:?"MODE missing [--all, --once, --loop]"}" | sed -E 's|[^a-zA-Z0-9_-]*||g')
-_COMPOSITION=$(echo "${2}" | sed -E 's|[^a-zA-Z0-9_-]*||g')
-_SSH_PORT=$(echo "${3:-22}" | sed -E 's/[^0-9]//g')
-
 # Folders always ends with an tailing '/'
 _SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
 _CIS_ROOT="${_SCRIPT%/script/host/zfs/composition-sync/sync.sh}/"  #Removes shortest matching pattern '/script/host/zfs/composition-sync/sync.sh' from the end
-_SEND_SCRIPT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/host/zfs/composition-sync/sync-send.sh"
 _DOMAIN="$("${_CIS_ROOT:?"Missing CIS_ROOT"}core/printOwnDomain.sh")"
 _DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/"
 
-_RECEIVERHOST=$(hostname -b)
 
 function stopObsoleteScreenSession() {
     local _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _COMPOSITION _PID
@@ -126,10 +120,11 @@ function removeOutdatedSyncSnapshots() {
 }
 
 function receive() {
-    local _RECEIVERHOST _COMPOSITION
+    local _RECEIVERHOST _COMPOSITION _SEND_SCRIPT
     _RECEIVERHOST="${1:?"receive(): Missing first parameter RECEIVERHOST"}"
     _COMPOSITION="${2:?"receive(): Missing second parameter COMPOSITION"}"
-    readonly _RECEIVERHOST _COMPOSITION
+    _SEND_SCRIPT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/host/zfs/composition-sync/sync-send.sh"
+    readonly _RECEIVERHOST _COMPOSITION _SEND_SCRIPT
 
     (
         flock -n 9 || exit 1
@@ -155,7 +150,8 @@ function receive() {
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
         ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_COMPOSITION}\" \"${_COMMON_SNAPSHOT#${_ZFS}@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
         if [ $? -ne 0 ]; then
-            echo "Unable to receive stream unsing these settings:"
+            tryRollbackToRepair "${_RECEIVERHOST}" "${_ZFS}" && return 0
+            echo "Unable to receive stream using these settings:"
             echo "  - Sending host:     ${_SOURCEHOST}:${_SSH_PORT}"
             echo "  - Receiving host:   ${_RECEIVERHOST}"
             echo "  - Composition:      ${_COMPOSITION}"
@@ -164,7 +160,7 @@ function receive() {
             echo "Current state of snapshots:"
             zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
             return 1
-        fi 
+        fi
 
         protectZFS "${_ZFS}"
         removeForeignSyncSnapshots "${_RECEIVERHOST}" "${_ZFS}"
@@ -177,19 +173,44 @@ function receive() {
     return 1
 }
 
+function tryRollbackToRepair() {
+    local _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
+    _RECEIVERHOST="${1:?"tryRollbackToRepair(): Missing first parameter RECEIVERHOST"}"
+    _ZFS="${2:?"tryRollbackToRepair(): Missing second parameter ZFS"}"
+    _ROLLBACK_DAY=$(head -n 1 "${_DEFINITIONS:?"Missing DEFINITIONS"}/compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
+    _ROLLBACK_SNAPSHOT=$(zfs list -t snapshot -H -o name -S creation "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
+    readonly _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
+
+    # Nothing to do
+    [ -z "${_ROLLBACK_SNAPSHOT}" ] && return 0
+
+    # Remove at most the two newest sync snapshots, if the day matches with the rollback file
+    echo "Try to fix by removing: '${_ROLLBACK_SNAPSHOT}'" \
+        && zfs destroy "${_ROLLBACK_SNAPSHOT:?"tryRollbackToRepair(): Missing _ROLLBACK_SNAPSHOT"}" \
+        && return 0
+
+    return 1
+
+}
 
 
-[ "${_MODE}" == "--all" ] \
-    && cleanSessions "${_RECEIVERHOST}" composition-sync-hosts \
-    && addSessions "${_RECEIVERHOST}" composition-sync-hosts \
+
+MODE=$(echo "${1:?"MODE missing [--all, --once, --loop]"}" | sed -E 's|[^a-zA-Z0-9_-]*||g')
+COMPOSITION=$(echo "${2}" | sed -E 's|[^a-zA-Z0-9_-]*||g')
+RECEIVERHOST=$(hostname -b)
+_SSH_PORT=$(echo "${3:-22}" | sed -E 's/[^0-9]//g')
+
+[ "${MODE}" == "--all" ] \
+    && cleanSessions "${RECEIVERHOST}" composition-sync-hosts \
+    && addSessions "${RECEIVERHOST}" composition-sync-hosts \
     && exit 0
 
-[ "${_MODE}" == "--once" ] \
-    && receive "${_RECEIVERHOST}" "${_COMPOSITION}" \
+[ "${MODE}" == "--once" ] \
+    && receive "${RECEIVERHOST}" "${COMPOSITION}" \
     && exit 0
 
-[ "${_MODE}" == "--loop" ] && while true; do
-    receive "${_RECEIVERHOST}" "${_COMPOSITION}" \
+[ "${MODE}" == "--loop" ] && while true; do
+    receive "${RECEIVERHOST}" "${COMPOSITION}" \
         && echo "Sleep for 5s" \
         && sleep 5 \
         && echo \
