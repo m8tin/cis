@@ -5,10 +5,10 @@
 
 
 
-function checkAllInputParameters() {
+function base.checkAllInputParameters() {
     local _ALLOWED_CHARS _ARG _SUCCESS
     # Global whitelist for all start-parameters ($1, $2, ...)
-    _ALLOWED_CHARS='-[:alnum:]_.:'
+    _ALLOWED_CHARS='-[:alnum:]/_.:'
     readonly _ALLOWED_CHARS
 
     _SUCCESS="true"
@@ -16,12 +16,12 @@ function checkAllInputParameters() {
         if [[ -n "${_ARG}" ]]; then
             # Has to start with an alphanumeric char or --
             if [[ ! "${_ARG}" =~ ^[[:alnum:]] ]] && [[ ! "${_ARG}" =~ ^--[[:alnum:]] ]]; then
-                echo "❌ Security: No special character is allowed at the bginning of the parameter: '${_ARG}'" >&2
+                echo "❌ Security base.checkAllInputParameters(): No special character is allowed at the beginning of the parameter: '${_ARG}'" >&2
                 _SUCCESS="false"
             fi
             # No forbidden character is allowed to remain
             if [[ -n "${_ARG//[${_ALLOWED_CHARS}]/}" ]]; then
-                echo "❌ Security: Illegal character found in parameter: '${_ARG}'" >&2
+                echo "❌ Security base.checkAllInputParameters(): Illegal character found in parameter: '${_ARG}'" >&2
                 _SUCCESS="false"
             fi
         fi
@@ -33,7 +33,7 @@ function checkAllInputParameters() {
     return 1
 }
 
-function checkScriptforCorrectAssignments() {
+function base.checkScriptforCorrectAssignments() {
     local _LN=0
     local _SUCCESS="true"
 
@@ -326,7 +326,7 @@ function base.set() {
         && readonly "${_VARNAME}" \
         && return 0
 
-    echo "❌ Security: Validation '$_REGEX' failed for ${_VARNAME}" >&2
+    echo "❌ Security base.set(): Validation '$_REGEX' failed for ${_VARNAME}" >&2
     exit 1
 }
 
@@ -354,13 +354,13 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
 else
     # If not exists, define a global array 'COLOR'
     trap "base.abort '  User-initiated termination.'" INT \
-        && checkAllInputParameters "${@}" \
         && declare -A -g COLOR=([SET]=unprepared) \
         && prepare.setCOLOR \
         && prepare.setPATH "/bin/grep" \
         && declare -A -g CIS=([SET]=unprepared) \
         && prepare.setCIS \
-        && checkScriptforCorrectAssignments \
+        && base.checkAllInputParameters "${@}" \
+        && base.checkScriptforCorrectAssignments \
         || base.abort "The necessary preparations have failed."
 
     base.log debug "Module '${BASH_SOURCE[0]}' loaded by script: ${0}"

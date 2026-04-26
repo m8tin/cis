@@ -119,17 +119,19 @@ function removeOutdatedSyncSnapshots() {
 }
 
 function receive() {
-    local _RECEIVERHOST _COMPOSITION _SSH_PORT _DEFINITIONS  _SOURCEHOST _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
+    local _RECEIVERHOST _COMPOSITION _SOURCEHOST _SSH_PORT _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
     _RECEIVERHOST="${1:?"receive(): Missing first parameter RECEIVERHOST"}"
     _COMPOSITION="${2:?"receive(): Missing second parameter COMPOSITION"}"
-    _SSH_PORT="${3:-22}"
-    _SOURCEHOST=$(cat "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host")
+    _SOURCEHOST=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host" 2> /dev/null)
+    base.set _SOURCEHOST "${_SOURCEHOST}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
+    _SSH_PORT=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/ssh-port" 2> /dev/null)
+    base.set _SSH_PORT "${_SSH_PORT:-22}" '^[1-9][0-9]{1,4}$'
     _SSH_COMMAND="ssh -p ${_SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -C composition-sync@${_SOURCEHOST}"
     _SEND_SCRIPT="${CIS[SCRIPTSROOT]:?"Missing CIS_SCRIPTSROOT"}host/zfs/composition-sync/sync-send.sh"
-    _ZFS_BRANCH=$(cat "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/zfs-branch")
-    _ZFS_BRANCH="${_ZFS_BRANCH:-zpool1/persistent}"
+    _ZFS_BRANCH=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/zfs-branch" 2> /dev/null)
+    base.set _ZFS_BRANCH "${_ZFS_BRANCH:-zpool1/persistent}" '^[a-zA-Z][a-zA-Z0-9/_-]*[a-zA-Z0-9]$'
     _ZFS="${_ZFS_BRANCH%/}/${_COMPOSITION}-BACKUP"
-    readonly _RECEIVERHOST _COMPOSITION _SSH_PORT _DEFINITIONS _SOURCEHOST _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
+    readonly _RECEIVERHOST _COMPOSITION _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
     (
         flock -n 9 || exit 1
 
@@ -147,17 +149,17 @@ function receive() {
         fi
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
-        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_COMPOSITION}\" \"${_COMMON_SNAPSHOT#${_ZFS}@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
+        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_ZFS_BRANCH}\" \"${_COMPOSITION}\" \"${_COMMON_SNAPSHOT#${_ZFS}@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
         if [ $? -ne 0 ]; then
-            tryRollbackToRepair "${_RECEIVERHOST}" "${_ZFS}" && return 0
             echo "Unable to receive stream using these settings:"
             echo "  - Sending host:     ${_SOURCEHOST}:${_SSH_PORT}"
             echo "  - Receiving host:   ${_RECEIVERHOST}"
             echo "  - Composition:      ${_COMPOSITION}"
-            echo "  - Offered snapshot: ${_COMMON_SNAPSHOT}"
+            echo "  - Offered snapshot: ${_ZFS}@${_COMMON_SNAPSHOT#${_ZFS}@}"
             echo "  - Resume token:     ${_RESUME_TOKEN}"
             echo "Current state of snapshots:"
             zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
+            tryRollbackToRepair "${_COMPOSITION}" "${_RECEIVERHOST}" "${_ZFS}" && return 0
             return 1
         fi
 
@@ -178,8 +180,9 @@ function tryRollbackToRepair() {
     _RECEIVERHOST="${2:?"tryRollbackToRepair(): Missing second parameter RECEIVERHOST"}"
     _ZFS="${3:?"tryRollbackToRepair(): Missing third parameter ZFS"}"
     _ROLLBACK_DAY=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
+    base.set _ROLLBACK_DAY "${_ROLLBACK_DAY:-'2020-01-01'}" '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
     _ROLLBACK_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
-    readonly _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
+    readonly _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_SNAPSHOT
 
     # Nothing to do
     [ -z "${_ROLLBACK_SNAPSHOT}" ] && return 0
@@ -196,11 +199,9 @@ function tryRollbackToRepair() {
 
 # Parameter 1: only one of these values are allowed (--all, --once, --loop)
 # Parameter 2: is optional '()?' and only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
-# Parameter 3: only digests between 10-99999 are allowed
-# Value 4    : only a subset of alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
+# Value 3    : only a subset of alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
 base.set MODE "${1}" '^(--all|--once|--loop)$'
 base.set COMPOSITION "${2}" '^([a-zA-Z0-9][a-zA-Z0-9_-]*)?$'
-base.set SSH_PORT "${3:-22}" '^[1-9][0-9]{1,4}$'
 base.set RECEIVERHOST "$(hostname -b)" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
 
 [ "${MODE}" == "--all" ] \
@@ -209,11 +210,11 @@ base.set RECEIVERHOST "$(hostname -b)" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
     && exit 0
 
 [ "${MODE}" == "--once" ] \
-    && receive "${RECEIVERHOST}" "${COMPOSITION}" "${SSH_PORT}" \
+    && receive "${RECEIVERHOST}" "${COMPOSITION}" \
     && exit 0
 
 [ "${MODE}" == "--loop" ] && while true; do
-    receive "${RECEIVERHOST}" "${COMPOSITION}" "${SSH_PORT}" \
+    receive "${RECEIVERHOST}" "${COMPOSITION}" \
         && echo "Sleep for 5s" \
         && sleep 5 \
         && echo \

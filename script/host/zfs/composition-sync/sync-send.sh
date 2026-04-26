@@ -94,14 +94,15 @@ function sendResume() {
 }
 
 function send() {
-    local _COMPOSITION _RECEIVERHOST _RECEIVERS_SNAPSHOT _NOW _ZFS _NEW_SNAPSHOT
-    _COMPOSITION="${1:?"send(): Missing first parameter COMPOSITION"}"
-    _RECEIVERHOST="${2:?"send(): Missing second parameter RECEIVERHOST"}"
-    _RECEIVERS_SNAPSHOT="${3}"
+    local _ZFS_BRANCH _COMPOSITION _RECEIVERHOST _RECEIVERS_SNAPSHOT _NOW _ZFS _NEW_SNAPSHOT
+    _ZFS_BRANCH="${1:?"send(): Missing first parameter ZFS_BRANCH"}"
+    _COMPOSITION="${2:?"send(): Missing first parameter COMPOSITION"}"
+    _RECEIVERHOST="${3:?"send(): Missing second parameter RECEIVERHOST"}"
+    _RECEIVERS_SNAPSHOT="${4}"
     _NOW=$(date -u "+%Y-%m-%d_%H:%M:%SZ")
-    _ZFS="zpool1/persistent/${_COMPOSITION:?"Missing COMPOSITION"}"
+    _ZFS="${_ZFS_BRANCH:?"Missing ZFS_BRANCH"}/${_COMPOSITION:?"Missing COMPOSITION"}"
     _NEW_SNAPSHOT="${_ZFS:?"Missing ZFS"}@SYNC_${_RECEIVERHOST:?"Missing RECEIVERHOST"}_${_NOW:?"Missing NOW"}"
-    readonly _COMPOSITION _RECEIVERHOST _RECEIVERS_SNAPSHOT _NOW _ZFS _NEW_SNAPSHOT
+    readonly _ZFS_BRANCH _COMPOSITION _RECEIVERHOST _RECEIVERS_SNAPSHOT _NOW _ZFS _NEW_SNAPSHOT
 
     # This common snapshot is the starting-point, if available.
     ! _COMMON_SNAPSHOT=$(printFoundCommonSnapshot "${_ZFS}" "${_RECEIVERHOST}" "${_RECEIVERS_SNAPSHOT}") \
@@ -125,13 +126,15 @@ function send() {
 
 
 # Parameter 1: Only alphanumeric characters allowed and [._-]  if not leading (due to: -oProxyCommand=...).
-# Parameter 2: Only alphanumeric characters allowed and [.-]   if not leading (due to: -oProxyCommand=...).
-# Parameter 3: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
+# Parameter 2: Only alphanumeric characters allowed and [/_-]  if not leading (due to: -oProxyCommand=...).
+# Parameter 3: Only alphanumeric characters allowed and [.-]   if not leading (due to: -oProxyCommand=...).
 # Parameter 4: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
+# Parameter 5: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
 base.set RECEIVERHOST "${1}" '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' || exit 1
-base.set COMPOSITION "${2}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' || exit 1
-base.set RECEIVERS_SNAPSHOT "${3}" '(^[a-zA-Z0-9][a-zA-Z0-9._:-]*$)?' || exit 1
-base.set RESUME_TOKEN "${4}" '(^[a-zA-Z0-9][a-zA-Z0-9._:-]*$)?' || exit 1
+base.set ZFS_BRANCH "${2}" '^[a-zA-Z][a-zA-Z0-9/_-]*[a-zA-Z0-9]$' || exit 1
+base.set COMPOSITION "${3}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' || exit 1
+base.set RECEIVERS_SNAPSHOT "${4}" '(^[a-zA-Z0-9][a-zA-Z0-9._:-]*$)?' || exit 1
+base.set RESUME_TOKEN "${5}" '(^[a-zA-Z0-9][a-zA-Z0-9._:-]*$)?' || exit 1
 
 # Resume mode
 if [ "${RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
@@ -141,7 +144,7 @@ if [ "${RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
     exit $?
 fi
 
-send "${COMPOSITION}" "${RECEIVERHOST}" "${RECEIVERS_SNAPSHOT}" \
+send "${ZFS_BRANCH}" "${COMPOSITION}" "${RECEIVERHOST}" "${RECEIVERS_SNAPSHOT}" \
     && exit 0
 
 echo "Failure in sync-send.sh: Something unexpected happend." >&2
