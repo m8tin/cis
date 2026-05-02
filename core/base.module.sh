@@ -107,6 +107,8 @@ function prepare.setCIS() {
     CIS[DOMAINDEFINITIONS]="${CIS[ROOT]}definitions/${CIS[DOMAIN]}/"
     CIS[DOMAINSTATES]="${CIS[ROOT]}states/${CIS[DOMAIN]}/"
 
+    CIS[COMPOSITIONS]="${CIS[DOMAINDEFINITIONS]:?"Missing DOMAINDEFINITIONS"}compositions/"
+
     CIS[SET]="normal"
     # Sets the write protection of array 'CIS'
     declare -A -g -r CIS
