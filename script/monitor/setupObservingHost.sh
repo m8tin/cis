@@ -1,25 +1,22 @@
 #!/bin/bash
+if [ $(id -u) -ne 0 ]; then
+    sudo "${0}" && exit 0
+    exit 1
+fi
 
-[ "$(id -u)" != "0" ] \
-    && sudo "${0}" \
-    && exit 0
-
-
-
-_SETUP="$(readlink -f "${0}" 2> /dev/null)"
-
-# Folders always ends with an tailing '/'
-_CIS_ROOT="${_SETUP%%/script/monitor/*}/"             #Removes longest  matching pattern '/script/monitor/*' from the end
-_DOMAIN="$("${_CIS_ROOT:?"Missing CIS_ROOT"}core/printOwnDomain.sh")"
-_DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/"
+source /cis/core/base.module.sh
 
 
 
 function checkPreconditions() {
-    [ -d "${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/checks" ] \
+    local _MONITOR_DIR
+    _MONITOR_DIR="${CIS[DOMAINDEFINITIONS]?"Missing CIS_DOMAINDEFINITIONS"}monitor/"
+    readonly _MONITOR_DIR
+
+    [ -d "${_MONITOR_DIR:?"Missing MONITOR_DIR"}checks" ] \
         && return 0
 
-    echo "No folder for your defined checks found: ${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/checks"
+    echo "No folder for your defined checks found: ${_MONITOR_DIR:?"Missing MONITOR_DIR"}checks"
     echo "Please create it and add all your custom monitoring checks there, following this convention: 'NAME_OF_THE_CHECK.on'"
     echo "A check has to be switched 'on' to be executed, so you can rename a check to 'NAME_OF_THE_CHECK.off' and it will be ignored."
     echo
@@ -30,11 +27,12 @@ function checkPreconditions() {
 
 
 function printSelectedDefinition() {
-    local _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT _SCRIPT_DEFINED_DEFAULT
-    _FILE_DEFINED_DOMAIN="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/${1:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFINED_DEFAULT="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/default/monitor/${1:?"Missing CURRENT_FULLFILE"}"
-    _SCRIPT_DEFINED_DEFAULT="${_CIS_ROOT:?"Missing CIS_ROOT"}script/monitor/${1:?"Missing CURRENT_FULLFILE"}"
-    readonly _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT _SCRIPT_DEFINED_DEFAULT
+    local _MONITOR_DIR _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT _SCRIPT_DEFINED_DEFAULT
+    _MONITOR_DIR="${CIS[DOMAINDEFINITIONS]?"Missing CIS_DOMAINDEFINITIONS"}monitor/"
+    _FILE_DEFINED_DOMAIN="${_MONITOR_DIR:?"Missing MONITOR_DIR"}${1:?"Missing CURRENT_FULLFILE"}"
+    _FILE_DEFINED_DEFAULT="${CIS[DEFAULTDEFINITIONS]}monitor/${1:?"Missing CURRENT_FULLFILE"}"
+    _SCRIPT_DEFINED_DEFAULT="${CIS[SCRIPTSROOT]}monitor/${1:?"Missing CURRENT_FULLFILE"}"
+    readonly _MONITOR_DIR _FILE_DEFINED_DOMAIN _FILE_DEFINED_DEFAULT _SCRIPT_DEFINED_DEFAULT
 
     [ -s "${_FILE_DEFINED_DOMAIN}" ] \
         && echo "${_FILE_DEFINED_DOMAIN}" \

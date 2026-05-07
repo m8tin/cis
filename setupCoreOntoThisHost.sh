@@ -1,11 +1,10 @@
 #!/bin/bash
-source ${CUSTOM_CIS_ROOT:-/}./cis/core/base.module.sh
+if [ $(id -u) -ne 0 ]; then
+    sudo "${0}" "${1}" && exit 0
+    exit 1
+fi
 
-
-
-[ "$(id -u)" != "0" ] \
-    && sudo "${0}" "${1}" \
-    && exit 0
+source /cis/core/base.module.sh
 
 
 

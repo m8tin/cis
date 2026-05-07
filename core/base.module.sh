@@ -161,8 +161,8 @@ function prepare.setPATH() {
 function base.abort() {
     # Minimalmode in case of emergency
     [[ "${COLOR[SET]:+isset}" != "isset" ]] \
-        && printf %b "\nScript aborted during preparation (State: '${CIS[SET]:-""}')!\n" >&2  \
-        && printf %b "  ${@}\n\n" >&2 \
+        && printf "\n%b\n" "Script aborted during preparation (State: '${CIS[SET]:-""}')!" >&2  \
+        && printf "  %b\n\n" "${@}" >&2 \
         && exit 1
 
     local _FULLSCRIPTNAME=$(readlink -e "${0}" 2> /dev/null)
@@ -269,7 +269,7 @@ function base.printEnvironment() {
     echo "Content of array CIS: (all folders end with an tailing '/')"
     echo "-----------------------------------------------------------"
     for _KEY in "${!CIS[@]}"; do
-        printf "  %s\n" "CIS[${_KEY}]: ${CIS[${_KEY}]}"
+        printf "  %s: %s\n" "CIS[${_KEY}]" "${CIS[${_KEY}]}"
     done
     return 0
 }

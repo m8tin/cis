@@ -1,8 +1,8 @@
 #!/bin/bash
-
-[ "$(id -u)" != "0" ] \
-    && sudo "${0}" \
-    && exit 0
+if [ $(id -u) -ne 0 ]; then
+    sudo "${0}" && exit 0
+    exit 1
+fi
 
 source /cis/core/base.module.sh
 
