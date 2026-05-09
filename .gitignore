@@ -9,6 +9,9 @@
 !/definitions/README.md
 !/definitions/default/
 /definitions/default/*
+!/definitions/default/check/
+/definitions/default/check/*
+!/definitions/default/check/all/
 !/definitions/default/core/
 /definitions/default/core/*
 !/definitions/default/core/all/
