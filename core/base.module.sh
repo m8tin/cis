@@ -46,13 +46,9 @@ function base.checkScriptforCorrectAssignments() {
     while IFS= read -r _line || [[ -n "${_line}" ]]; do
         ((_LN++))
 
-        [[ ! "${_line}" =~ ^.*(=\$|=\"\$).*$ ]] && continue # Assignments only
-
         [[ "${_line}" =~ ^[[:space:]]*# ]] && continue # Comments are okay
 
-        [[ "${_line}" =~ ^[[:space:]]+[a-zA-Z0-9_]+=[^\ ]+ ]] && continue # Allow assignments in functions
-
-        [[ "${_line}" =~ ^[a-zA-Z0-9_]+=[^\ ]+ ]] && [[ ! "${_line}" =~ "base.set" ]] \
+        [[ "${_line}" =~ ^[-a-zA-Z0-9_]+=\"?\$\{?([0-9]+|@) ]] && [[ ! "${_line}" =~ "base.set" ]] \
             && echo "❌ line ${_LN}: direct assignment prohibited! Use 'base.set VARNAME VALUE REGEX' instead." >&2 \
             && _SUCCESS="false"
 
