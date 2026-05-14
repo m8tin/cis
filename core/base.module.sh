@@ -1,4 +1,10 @@
 #!/bin/bash
+
+#WARNING: Used for core functionality in setup.sh
+#         DO NOT rename the script and test changes well!
+
+
+
 [ "${BASH_VERSINFO[0]}" -lt 4 ] \
     && echo "Version 4 or newer is required, bash has version : '${BASH_VERSION}'." >&2 \
     && exit 1
@@ -74,7 +80,7 @@ function prepare.setCIS() {
     CIS[ROOT]="${_CISROOT:?"Missing CISROOT"}"
     CIS[COREROOT]="${CIS[ROOT]}core/"
     CIS[SCRIPTSROOT]="${CIS[ROOT]}script/"
-    CIS[DOMAIN]=$("${CIS[COREROOT]}"printOwnDomain.sh)
+    CIS[DOMAIN]=$(base.printOwnDomain "${CIS[ROOT]}")
     CIS[MODULEDIR]="${CIS[ROOT]}module/"
 
     [ -z "${CIS[DOMAIN]}" ] \
@@ -291,9 +297,39 @@ function base.printModuleFunctions() {
     return 1
 }
 
+function base.printOwnDomain() {
+    local _CIS_ROOT _OVERRIDE_DOMAIN_FILE
+    _CIS_ROOT="${1:?"base.printOwnDomain(): Missing first parameter CIS_ROOT."}"
+    _OVERRIDE_DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
+    readonly _CIS_ROOT _OVERRIDE_DOMAIN_FILE
+
+    local _BOOT_DOMAIN _OVERRIDE_DOMAIN
+
+    # There has to be one dot at least.
+    _BOOT_DOMAIN="$(hostname -b | grep -F '.' | cut -d. -f2-)"
+
+    # Take OVERRIDING_DOMAIN_FILE without empty lines and comments, then take the first line without leading spaces
+    _OVERRIDE_DOMAIN="$(grep -vE '^[[:space:]]*$|^[[:space:]]*#' "${_OVERRIDE_DOMAIN_FILE}" 2> /dev/null | head -n 1 | xargs)"
+
+    readonly _BOOT_DOMAIN _OVERRIDE_DOMAIN
+
+    [ -n "${_OVERRIDE_DOMAIN}" ] \
+        && [ "${_OVERRIDE_DOMAIN}" != "${_BOOT_DOMAIN}" ] \
+        && printf "WARNING: Domain has been overridden by: %s\n\n" "${_OVERRIDE_DOMAIN_FILE}" >&2 \
+        && echo "${_OVERRIDE_DOMAIN}" \
+        && return 0
+
+    [ -n "${_BOOT_DOMAIN}" ] \
+        && echo "${_BOOT_DOMAIN}" \
+        && return 0
+
+    printf "It was impossible to find out the domain of this host, please prepare this host first.\n" >&2
+    return 1
+}
+
 function base.printWithColor() {
     local _COLOR _COLOR_KEY _MESSAGE _NO_COLOR
-    _COLOR_KEY="${1:?"log.color(): Missing first parameter COLOR."}"
+    _COLOR_KEY="${1:?"base.printWithColor(): Missing first parameter COLOR."}"
     # It printing target is a terminal which supports more than 8 colors.
     if [ -t 1 ] \
         && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ] \
@@ -345,7 +381,6 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo
     echo '#!/bin/bash'
     echo 'source /cis/core/base.module.sh'
-    echo
     echo
     base.printEnvironment
     echo
