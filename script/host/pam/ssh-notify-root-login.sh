@@ -1,12 +1,9 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
-_FULL_SCRIPTNAME="$(readlink -f "${0}" 2> /dev/null)"
-_SCRIPTNAME=${_FULL_SCRIPTNAME##*/}
-
-_LOGFILE="/var/log/${_SCRIPTNAME?:"Missing SCRIPTNAME"}.log" 
+_LOGFILE="/var/log/${CIS[SCRIPTNAME]?:"Missing SCRIPTNAME"}.log"
 _EMAIL_ADDRESS=""
 _SLACK_WEBHOOK_URL=""
-readonly _FULL_SCRIPTNAME _SCRIPTNAME
 
 
 
@@ -56,38 +53,66 @@ function sendSlackMessage() {
     return 1
 }
 
+function notify() {
+    if [ "$PAM_TYPE" != "close_session" ] && [ "${PAM_USER}" != "" ]; then
+
+        # Log root logins only
+        [ "${PAM_USER}" != "root" ] \
+            && exit 0
+
+        # Skip logins from private IPs
+        echo "${PAM_RHOST}" | grep -Eq "^192\.168\..*$" \
+            && exit 0
+
+        _MESSAGE="[$(date --rfc-3339=seconds)] - Login from IP: '${PAM_RHOST}' as user 'root@$(hostname)'"
+
+        log "${_MESSAGE}"
+        sendEMail "${_MESSAGE}"
+        sendSlackMessage "${_MESSAGE}"
+        return 0
+    fi
+    return 1
+}
+
 function setup() {
     local _COMMAND _PAM_FILE
-    _COMMAND="session optional pam_exec.so ${_FULL_SCRIPTNAME?:"Missing FULL_SCRIPTNAME"}"
+    _COMMAND="session optional pam_exec.so ${CIS[FULLSCRIPTNAME]?:"Missing FULL_SCRIPTNAME"} --notify"
     _PAM_FILE="/etc/pam.d/sshd"
     readonly _COMMAND _PAM_FILE
 
+    ! [ -f "${_PAM_FILE}" ] \
+        && printf "FAILURE: Missing file: %s\n" "${_PAM_FILE:?"Missing PAM_FILE"}" >&2 \
+        && exit 1
+
     # Lines are already appended, so nothing is to do, therefore no setup.
-    grep -Fq "/${_SCRIPTNAME?:"Missing SCRIPTNAME"}" "${_PAM_FILE:?"Missing PAM_FILE"}" \
+    grep -q -F "/${CIS[SCRIPTNAME]?:"Missing SCRIPTNAME"}" "${_PAM_FILE}" \
         && return 1
 
     # Append command to call this script, which is the setup.
-    [ -f "${_PAM_FILE}" ] \
-        && echo -e "\n#Call this script on each ssh-login\n${_COMMAND}" >> "${_PAM_FILE}"
+    printf "Appending the following command to file '%s':\n  - %s\n" "${_PAM_FILE}" "${_COMMAND}" >&2 \
+        && printf "\n#Call this script on each ssh-login\n%s\n" "${_COMMAND}" >> "${_PAM_FILE}" \
+        && printf "SUCCESS: Setup completed.\n" >&2 \
+        && return 0
 
-    return 0
+    printf "FAILURE: Setup of '%s' failed.\n" "${CIS[SCRIPTNAME]}" >&2
+    exit 1
 }
 
-if [ "$PAM_TYPE" != "close_session" ] && ! setup && [ "${PAM_USER}" != "" ]; then
+case "${1}" in
 
-    # Log root logins only
-    [ "${PAM_USER}" != "root" ] \
-        && exit 0
+  --notify)
+    notify && exit 0
+    exit 1
+    ;;
 
-    # Skip logins from private IPs
-    echo "${PAM_RHOST}" | grep -Eq "^192\.168\..*$" \
-        && exit 0
+  --setup)
+    setup && exit 0
+    exit 1
+    ;;
 
-    _MESSAGE="[$(date --rfc-3339=seconds)] - Login from IP: '${PAM_RHOST}' as user 'root@$(hostname)'"
+  *)
+    echo "Run '${CIS[SCRIPTNAME]} --setup' to register this script."
+    exit 0
+    ;;
 
-    log "${_MESSAGE}"
-    sendEMail "${_MESSAGE}"
-    sendSlackMessage "${_MESSAGE}"
-fi
-
-exit 0
+esac
