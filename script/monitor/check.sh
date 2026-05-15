@@ -1,21 +1,14 @@
 #!/bin/bash
-
-# Folders always ends with an tailing '/'
-_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_CIS_ROOT="${_SCRIPT%%/script/monitor/*}/"               #Removes longest  matching pattern '/script/monitor/*' from the end
-_CORE_SCRIPTS="${_CIS_ROOT:?"Missing CIS_ROOT"}core/"
-_CURRENT_DOMAIN="$("${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}printOwnDomain.sh")"
-_DEFINITIONS="${_CIS_ROOT:?"Missing CIS_ROOT"}definitions/${_CURRENT_DOMAIN:?"Missing CURRENT_DOMAIN"}/"
-
-# Checks for the entire domain
-_DOMAIN_CHECKS="${_DEFINITIONS:?"Missing DEFINITIONS"}monitor/checks/"
+source /cis/core/base.module.sh
 
 
 
 function doChecks(){
-    local readonly _TMPDIR="${1:?"doChecks(): Missing parameter TMPDIR:"}"
-
-    local _DATETIME=$(date +%H-%M-%S)
+    local _TMPDIR _DATETIME _DOMAIN_CHECKS
+    _TMPDIR="${1:?"doChecks(): Missing parameter TMPDIR:"}"
+    _DATETIME=$(date +%H-%M-%S)
+    _DOMAIN_CHECKS="${CIS[DOMAINDEFINITIONS]?"Missing CIS_DOMAINDEFINITIONS"}monitor/checks/"
+    readonly _TMPDIR _DATETIME _DOMAIN_CHECKS
 
     mkdir -p ${_TMPDIR}
     rm ${_TMPDIR}/* > /dev/null 2>&1

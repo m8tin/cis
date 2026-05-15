@@ -110,6 +110,7 @@ function prepare.setCIS() {
     CIS[DOMAINSTATES]="${CIS[ROOT]}states/${CIS[DOMAIN]}/"
 
     CIS[COMPOSITIONS]="${CIS[DOMAINDEFINITIONS]:?"Missing DOMAINDEFINITIONS"}compositions/"
+    CIS[GENERICMONITORCHECKS]="${CIS[SCRIPTDIR]:?"Missing SCRIPTDIR"}monitor/generic/"
 
     CIS[SET]="normal"
     # Sets the write protection of array 'CIS'

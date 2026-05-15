@@ -73,7 +73,7 @@ function checkSync() {
 
         # If remote host is found than it is responsible for this container-composition, otherwise skip
         #   (grep -E "^[[:blank:]]*something" means. Line has to start with "something", leading blank chars are ok.)
-        grep -E "^[[:blank:]]*${_REMOTE_HOSTNAME_SHORT}" "${_COMPOSITION_PATH}/zfssync-hosts" &> /dev/null \
+        grep -E "^[[:blank:]]*${_REMOTE_HOSTNAME_SHORT}" "${_COMPOSITION_PATH}/composition-sync-hosts" &> /dev/null \
             || continue;
 
         _COMPOSITION_NAME="${_COMPOSITION_PATH##*/}"   #Removes longest  matching pattern '*/' from the begin
