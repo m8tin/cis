@@ -34,7 +34,7 @@ function allChecks() {
         ! [ -x "${_CURRENT_CHECK}" ] \
             && continue
         _CHECK_FOUND="true"
-        _NAME="$(basename ${_CURRENT_CHECK} | cut -d'.' -f1)"
+        _NAME="$(echo ${_CURRENT_CHECK##*/} | cut -d'.' -f1)"
         _CONTEXT="$(echo ${_NAME} | cut -d'_' -f1)"
         _CHECK="$(echo ${_NAME} | cut -d'_' -f2- | tr '_' ' ')"
         _RESULT="$("${_CURRENT_CHECK}" && echo OK || echo FAIL)"

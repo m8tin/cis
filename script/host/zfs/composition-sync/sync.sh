@@ -51,7 +51,8 @@ function addSessions() {
     local _COMPOSITION
     grep -lrE "^${_RECEIVERHOST}" ${_DEFINITIONS}compositions/*/${_SYNCHOSTS_FILE} | while read -r _CURRENT_SYNCHOSTS_FILE; do
         _SSH_PORT=$(grep -E "^${_RECEIVERHOST} usePort [0-9]*.*$" "${_CURRENT_SYNCHOSTS_FILE}" | cut -d' ' -f3 | xargs)
-        _COMPOSITION=$(basename $(dirname "${_CURRENT_SYNCHOSTS_FILE}"))
+        _COMPOSITION="${_CURRENT_SYNCHOSTS_FILE%/*}"
+        _COMPOSITION="${_COMPOSITION##*/}"
         startMissingScreenSession "${_COMPOSITION}" "${_SSH_PORT}"
     done
 }

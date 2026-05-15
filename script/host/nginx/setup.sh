@@ -1,11 +1,13 @@
 #!/bin/bash
+source /cis/core/base.module.sh
+
+
 
 function main() {
-    local _SCRIPTPATH _DH_PATH _SELF_SIGNED_PATH
-    _SCRIPTPATH="$(cd -- "$(dirname "$0")" > /dev/null 2>&1; pwd -P)"
+    local _DH_PATH _SELF_SIGNED_PATH
     _DH_PATH="/etc/ssl/private"
     _SELF_SIGNED_PATH="/etc/ssl/private"
-    readonly _SCRIPTPATH _DH_PATH _SELF_SIGNED_PATH
+    readonly _DH_PATH _SELF_SIGNED_PATH
 
     ! dpkg -s nginx > /dev/null 2>&1 \
         && apt-get --yes install nginx-full \
@@ -35,9 +37,9 @@ function main() {
 
 #TODO Links erstellen
 #    [ -d "/etc/nginx/" ] \
-#        && cp "${_SCRIPTPATH}/etc_nginx_conf.d/"* "/etc/nginx/conf.d/" \
+#        && cp "${CIS[SCRIPTDIR]:?"Missing global SCRIPTDIR"}/etc_nginx_conf.d/"* "/etc/nginx/conf.d/" \
 #        && mkdir -p /etc/nginx/ssl-trusted \
-#        && cp "${_SCRIPTPATH}/etc_nginx_ssl-trusted/"* "/etc/nginx/ssl-trusted/" \
+#        && cp "${CIS[SCRIPTDIR]:?"Missing global SCRIPTDIR"}/etc_nginx_ssl-trusted/"* "/etc/nginx/ssl-trusted/" \
 #        && mkdir -p /var/www/letsencrypt/.well-known/acme-challenge \
 #        && echo "Basis-Konfiguration erfolgreich erstellt." \
 #        || echo "Basis-Konfiguration bereits vorhanden."
@@ -51,4 +53,4 @@ function main() {
     return 1
 }
 
-main "$@" && exit 0 || exit 1
+main && exit 0 || exit 1
