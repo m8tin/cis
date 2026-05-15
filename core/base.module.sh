@@ -66,15 +66,25 @@ function prepare.setCIS() {
         && base.abort "Array CIS was not initialized correctly."
 
     # Retrieves the variables for this module using 'BASH_SOURCE[0]', the infos about the script using '$0'.
-    local _CISROOT _FULLBASENAME _FULLSCRIPTNAME
-    _FULLBASENAME=$(readlink -e "${BASH_SOURCE[0]}" 2> /dev/null)
-    _FULLSCRIPTNAME=$(readlink -e "${0}" 2> /dev/null)
-    _CISROOT=$(echo "${_FULLSCRIPTNAME}" | grep -o '^.*/cis/')
-    readonly _CISROOT _FULLBASENAME _FULLSCRIPTNAME
+    local _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME
+    _FULLBASENAME=$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)
+    _FULLSCRIPTNAME=$(realpath "${0}" 2> /dev/null)
+
+    _ROOT_TRUNK="${_FULLSCRIPTNAME%cis/*}"
+    while [ ! -d "${_ROOT_TRUNK}cis/core/" ]; do
+        [ "${_ROOT_TRUNK}" == "${0}" ] \
+            && base.abort '  Unable to find root folder of CIS!' 'It seams the script does not belong to CIS.'
+
+        [ "${_ROOT_TRUNK}" == "/" ] \
+            && base.abort '  Unable to find root folder of CIS!' 'This state was reached unexpected.'
+
+        _ROOT_TRUNK="${_ROOT_TRUNK%cis/*}"
+    done
+    readonly _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME
 
     # Folders always ends with an tailing '/'
-    CIS[ROOT]="${_CISROOT:?"Missing CISROOT"}"
-    CIS[COREROOT]="${CIS[ROOT]}core/"
+    CIS[ROOT]="${_ROOT_TRUNK:?"Missing ROOT_TRUNK"}cis/"
+    CIS[COREROOT]="${CIS[ROOT]:?"Missing ROOT"}core/"
     CIS[SCRIPTSROOT]="${CIS[ROOT]}script/"
     CIS[DOMAIN]=$(base.printOwnDomain "${CIS[ROOT]}")
     CIS[MODULEDIR]="${CIS[ROOT]}module/"
@@ -106,11 +116,11 @@ function prepare.setCIS() {
     CIS[SCRIPTNAME]="${CIS[FULLSCRIPTNAME]##*/}"
 
     CIS[DEFAULTDEFINITIONS]="${CIS[ROOT]}definitions/default/"
-    CIS[DOMAINDEFINITIONS]="${CIS[ROOT]}definitions/${CIS[DOMAIN]}/"
+    CIS[DOMAINDEFINITIONS]="${CIS[ROOT]}definitions/${CIS[DOMAIN]:?"Missing DOMAIN"}/"
     CIS[DOMAINSTATES]="${CIS[ROOT]}states/${CIS[DOMAIN]}/"
 
     CIS[COMPOSITIONS]="${CIS[DOMAINDEFINITIONS]:?"Missing DOMAINDEFINITIONS"}compositions/"
-    CIS[GENERICMONITORCHECKS]="${CIS[SCRIPTDIR]:?"Missing SCRIPTDIR"}monitor/generic/"
+    CIS[GENERICMONITORCHECKS]="${CIS[SCRIPTSROOT]:?"Missing SCRIPTROOT"}monitor/generic/"
 
     CIS[SET]="normal"
     # Sets the write protection of array 'CIS'
@@ -168,7 +178,7 @@ function base.abort() {
         && printf "  %b\n\n" "${@}" >&2 \
         && exit 1
 
-    local _FULLSCRIPTNAME=$(readlink -e "${0}" 2> /dev/null)
+    local _FULLSCRIPTNAME=$(realpath "${0}" 2> /dev/null)
     local _SCRIPTNAME="${_FULLSCRIPTNAME##*/}"
 
     [ "${1:+isset}" != "isset" ] \
