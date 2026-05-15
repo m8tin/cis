@@ -20,9 +20,9 @@ function base.checkAllInputParameters() {
     _SUCCESS="true"
     for _ARG in "${@}"; do
         if [[ -n "${_ARG}" ]]; then
-            # Has to start with an alphanumeric char or --
-            if [[ ! "${_ARG}" =~ ^[[:alnum:]] ]] && [[ ! "${_ARG}" =~ ^--[[:alnum:]] ]]; then
-                echo "❌ Security base.checkAllInputParameters(): No special character is allowed at the beginning of the parameter: '${_ARG}'" >&2
+            # Has to start with an alphanumeric char '--' or '/'
+            if [[ ! "${_ARG}" =~ ^(--|/)?[[:alnum:]] ]]; then
+                echo "❌ Security base.checkAllInputParameters(): No special characters except '--' or '/' are allowed at the beginning of a parameter: '${_ARG}'" >&2
                 _SUCCESS="false"
             fi
             # No forbidden character is allowed to remain
