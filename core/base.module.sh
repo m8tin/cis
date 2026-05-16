@@ -122,7 +122,7 @@ function prepare.setCIS() {
     CIS[COMPOSITIONS]="${CIS[DOMAINDEFINITIONS]:?"Missing DOMAINDEFINITIONS"}compositions/"
     CIS[GENERICMONITORCHECKS]="${CIS[SCRIPTSROOT]:?"Missing SCRIPTROOT"}monitor/generic/"
 
-    CIS[SET]="normal"
+    CIS[SET]='ready'
     # Sets the write protection of array 'CIS'
     declare -A -g -r CIS
     return 0
@@ -395,6 +395,8 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo "-------------------------------------------------------------------------"
     declare -F | grep "base." | cut -d" " -f3 | xargs -n1 printf "  %s\n"
     exit 1
+elif [ "${CIS[SET]}" == "ready" ]; then
+    base.log debug "Module '${BASH_SOURCE[0]}' already loaded"
 else
     # If not exists, define a global array 'COLOR'
     trap "base.abort '  User-initiated termination.'" INT \
