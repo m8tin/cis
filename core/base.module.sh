@@ -67,8 +67,8 @@ function prepare.setCIS() {
 
     # Retrieves the variables for this module using 'BASH_SOURCE[0]', the infos about the script using '$0'.
     local _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME
-    _FULLBASENAME=$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)
-    _FULLSCRIPTNAME=$(realpath "${0}" 2> /dev/null)
+    _FULLBASENAME="$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)"
+    _FULLSCRIPTNAME="$(realpath "${0}" 2> /dev/null)"
 
     _ROOT_TRUNK="${_FULLSCRIPTNAME%cis/*}"
     while [ ! -d "${_ROOT_TRUNK}cis/core/" ]; do
@@ -84,10 +84,7 @@ function prepare.setCIS() {
 
     # Folders always ends with an tailing '/'
     CIS[ROOT]="${_ROOT_TRUNK:?"Missing ROOT_TRUNK"}cis/"
-    CIS[COREROOT]="${CIS[ROOT]:?"Missing ROOT"}core/"
-    CIS[SCRIPTSROOT]="${CIS[ROOT]}script/"
-    CIS[DOMAIN]=$(base.printOwnDomain "${CIS[ROOT]}")
-    CIS[MODULEDIR]="${CIS[ROOT]}module/"
+    CIS[DOMAIN]="$(base.printOwnDomain "${CIS[ROOT]:?"Missing ROOT"}")"
 
     [ -z "${CIS[DOMAIN]}" ] \
         && echo \
@@ -95,6 +92,10 @@ function prepare.setCIS() {
         && echo "  This may be due to an incorrect configuration." \
         && echo \
         && return 1
+
+    CIS[COREROOT]="${CIS[ROOT]}core/"
+    CIS[MODULEROOT]="${CIS[ROOT]}module/"
+    CIS[SCRIPTSROOT]="${CIS[ROOT]}script/"
 
     # Sets the valus of the global array 'CIS' and set it readonly
     CIS[ARGS]="${@}"
@@ -221,7 +222,7 @@ function base.filterComments() {
 function base.loadModule() {
     local _MODULENAME _MODULEFULLNAME
     _MODULENAME="${1:?"Function base.loadModule(): Missing parameter MODULENAME."}"
-    _MODULEFULLNAME="${CIS[MODULEDIR]:?"Function base.loadModule(): Missing CISMODULEDIR."}/${_MODULENAME}.module.sh"
+    _MODULEFULLNAME="${CIS[MODULEROOT]:?"Function base.loadModule(): Missing CISMODULEDIR."}/${_MODULENAME}.module.sh"
     readonly _MODULENAME _MODULEFULLNAME
 
     #module already is loaded => return

@@ -4,17 +4,31 @@ base.loadModule ssh
 
 
 
-function testDomain(){
-    local _RESULT=$(ssh.onHostRun "monitoring@${1:?"Missing REMOTE_HOST"}" 'bash /cis/core/printOwnDomain.sh' 2>&1 1>/dev/null)
+function testDomain() {
+    if [ -n "${1}" ]; then
+        local _RESULT="$(ssh.onHostRun "monitoring@${1:?"Missing REMOTE_HOST"}" '/cis/script/monitor/generic/CIS_OWN_DOMAIN_CHECK.sh' 2>/dev/null)"
 
-    [ -z "${_RESULT}" ] \
-        && echo "OK" \
-        && return 0
+        [ -n "${_RESULT}" ] \
+            && echo "${_RESULT}" \
+            && return 0
 
-    local _DOMAIN=$(ssh.onHostRun "monitoring@${1:?"Missing REMOTE_HOST"}" 'bash /cis/core/printOwnDomain.sh' 2>/dev/null)
-    echo "WARNING#Overwritten to '${_DOMAIN}'"
-    return 0
+        echo "FAIL#check ssh connection"
+        return 1
+    else
+        [ -z "${CIS[DOMAIN]}" ] \
+            && echo "FAIL" \
+            && return 1
+
+        [ "$(hostname -s).${CIS[DOMAIN]}" == "${CIS[HOST]}" ] \
+            && echo "OK" \
+            && return 0
+
+        echo "WARNING#Overwritten to '${CIS[DOMAIN]}'"
+        return 0
+    fi
 }
 
-base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
+# FQDN of server: e.g. host.example.net[:port]
+base.set REMOTE_HOST "${1}" '^(([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?)?$'
 testDomain "${REMOTE_HOST}" && exit 0
+exit 1
