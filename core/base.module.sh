@@ -66,7 +66,7 @@ function prepare.setCIS() {
         && base.abort "Array CIS was not initialized correctly."
 
     # Retrieves the variables for this module using 'BASH_SOURCE[0]', the infos about the script using '$0'.
-    local _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME
+    local _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME _CIS_ROOT
     _FULLBASENAME="$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)"
     _FULLSCRIPTNAME="$(realpath "${0}" 2> /dev/null)"
 
@@ -80,11 +80,18 @@ function prepare.setCIS() {
 
         _ROOT_TRUNK="${_ROOT_TRUNK%cis/*}"
     done
-    readonly _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME
 
     # Folders always ends with an tailing '/'
-    CIS[ROOT]="${_ROOT_TRUNK:?"Missing ROOT_TRUNK"}cis/"
-    CIS[DOMAIN]="$(base.printOwnDomain "${CIS[ROOT]:?"Missing ROOT"}")"
+    _CIS_ROOT="${_ROOT_TRUNK:?"Missing ROOT_TRUNK"}cis/"
+    readonly _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME _CIS_ROOT
+
+    [ -d "${_CIS_ROOT:?"Missing CIS_ROOT"}" ] \
+        && [ -d "${_CIS_ROOT}core/" ] \
+        && [ -d "${_CIS_ROOT}definitions/" ] \
+        && [ -d "${_CIS_ROOT}states/" ] \
+        && CIS[ROOT]="${_CIS_ROOT}"
+
+    CIS[DOMAIN]="$(base.printOwnDomain "${CIS[ROOT]:?"Missing global CIS_ROOT"}")"
 
     [ -z "${CIS[DOMAIN]}" ] \
         && echo \
