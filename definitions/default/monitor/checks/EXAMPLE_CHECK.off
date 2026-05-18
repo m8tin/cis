@@ -1,9 +1,6 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
-_CHECK="$(readlink -f "${0}" 2> /dev/null)"
 
-# Folders always ends with an tailing '/'
-_CIS_ROOT="${_CHECK%%/definitions/*}/"             #Removes longest  matching pattern '/definitions/*' from the end
-_GENERIC_CHECKS="${_CIS_ROOT:?"Missing CIS_ROOT"}script/monitor/generic/"
 
-${_GENERIC_CHECKS:?"Missing GENERIC_CHECKS"}CIS_OWN_DOMAIN_CHECK.sh "your-host.your-domain.net[:ssh_port]"
+${CIS[GENERICMONITORCHECKS]:?"Missing GENERICMONITORCHECKS"}CIS_OWN_DOMAIN_CHECK.sh "your-host.your-domain.net[:ssh_port]"

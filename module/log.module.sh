@@ -1,5 +1,7 @@
-
 #!/bin/bash
+source /cis/core/base.module.sh
+
+
 
 #Function, to highlight bad messages.
 function log.bad() {
@@ -134,9 +136,7 @@ function log.optional(){
 #Function, to start a script.
 function log.start(){
     local _MESSAGE="${@:-""}"
-    local _CISROOT="${CIS[ROOT]:?"log.start(): Missing CIS[ROOT]."}"
-    local _SCRIPTDIR="${CIS[SCRIPTDIR]:?"log.start(): Missing CIS[SCRIPTDIR]."}"
-    local _SERVICE="$(echo "${_SCRIPTDIR##${_CISROOT}/}" | tr '[:lower:]' '[:upper:]')"
+    local _SERVICE="$(echo "${_SCRIPTDIR##${CIS[ROOT]:?"log.start(): Missing CIS[ROOT]"}/}" | tr '[:lower:]' '[:upper:]')"
     local _COMMAND="${CIS[SCRIPTNAME]:?"log.start(): Missing CIS[SCRIPTNAME]."}"
 
     [ -z "${_MESSAGE:-""}" ] \

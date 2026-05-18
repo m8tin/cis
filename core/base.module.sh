@@ -72,7 +72,7 @@ function prepare.setCIS() {
 
     _ROOT_TRUNK="${_FULLSCRIPTNAME%cis/*}"
     while [ ! -d "${_ROOT_TRUNK}cis/core/" ]; do
-        [ "${_ROOT_TRUNK}" == "${0}" ] \
+        [ "${_ROOT_TRUNK}" == "${_FULLSCRIPTNAME}" ] \
             && base.abort '  Unable to find root folder of CIS!' 'It seams the script does not belong to CIS.'
 
         [ "${_ROOT_TRUNK}" == "/" ] \
