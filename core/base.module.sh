@@ -14,7 +14,7 @@
 function base.checkAllInputParameters() {
     local _ALLOWED_CHARS _ARG _SUCCESS
     # Global whitelist for all start-parameters ($1, $2, ...)
-    _ALLOWED_CHARS='-[:alnum:]/_.:'
+    _ALLOWED_CHARS='-[:alnum:]@/_.:'
     readonly _ALLOWED_CHARS
 
     _SUCCESS="true"

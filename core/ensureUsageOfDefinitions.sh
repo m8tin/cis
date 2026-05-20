@@ -1,7 +1,10 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
 #WARNING: Used for core functionality in setup.sh
 #         DO NOT rename the script and test changes well!
+
+
 
 function printIfEqual() {
     [ "${1:?"Missing first parameter"}" == "${2}" ] \
@@ -215,9 +218,11 @@ function ensureUsageOfDefinitions() {
 }
 
 # sanitizes all parameters
+base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set CURRENT_FULLFILE "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
 ensureUsageOfDefinitions \
-    "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+    "${DEFINITIONS:?"Missing DEFINITIONS"}" \
+    "${CURRENT_FULLFILE:?"Missing CURRENT_FULLFILE"}" \
     && exit 0
 
 exit 1

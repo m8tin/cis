@@ -1,7 +1,10 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
 #WARNING: Used for core functionality in setup.sh
 #         DO NOT rename the script and test changes well!
+
+
 
 function prepareFolder() {
     local _HOME_FOLDER _SSH_FOLDER _USER
@@ -133,9 +136,11 @@ function defineAuthorizedKeysOfUser() {
 }
 
 # sanitizes all parameters
+base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set USER "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
 defineAuthorizedKeysOfUser \
-    "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+    "${DEFINITIONS:?"Missing DEFINITIONS"}" \
+    "${USER:?"Missing USER"}" \
     && exit 0
 
 exit 1

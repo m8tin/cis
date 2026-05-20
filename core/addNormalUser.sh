@@ -1,4 +1,5 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
 #WARNING: Used for core functionality in setup.sh
 #         DO NOT rename the script and test changes well!
@@ -36,7 +37,8 @@ function addNormalUser() {
 }
 
 # sanitizes all parameters
-addNormalUser "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+base.set USER "${1}" '^[a-z][-a-z0-9_.]*$' || exit 1
+addNormalUser "${USER:?"Missing USER"}" \
     && exit 0
 
 exit 1

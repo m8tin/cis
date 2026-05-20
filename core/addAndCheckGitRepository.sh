@@ -1,11 +1,12 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
 #WARNING: Used for core functionality in setup.sh
 #         DO NOT rename the script and test changes well!
 
 
 
-function checkPermissions(){
+function checkPermissions() {
     local _FOLDER _RIGHTS
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
     _RIGHTS="${2:?"Missing second parameter RIGHTS"}"
@@ -27,7 +28,7 @@ function checkPermissions(){
     return 1
 }
 
-function cloneOrPull {
+function cloneOrPull() {
     local _FOLDER _REPOSITORY
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
     _REPOSITORY="${2:?"Missing second parameter REPOSITORY"}"
@@ -47,7 +48,7 @@ function cloneOrPull {
     return 1
 }
 
-function printRepository(){
+function printRepository() {
     local _FOLDER _CONFIGURED_REPOSITORY _SUGGESTED_REPOSITORY
     _FOLDER="${1:?"Missing first parameter FOLDER"}"
     _CONFIGURED_REPOSITORY="$(git -C "${_FOLDER:?"Missing FOLDER"}" config --get remote.origin.url 2> /dev/null)"
@@ -98,10 +99,13 @@ function addAndCheckGitRepository() {
 }
 
 # sanitizes all parameters
+base.set FOLDER "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set RIGHTS "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set SUGGESTED_REPOSITORY "${3}" '^([-a-zA-Z0-9/:@._]*)?$' || exit 1
 addAndCheckGitRepository \
-    "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    "$(echo ${3} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+    "${FOLDER:?"Missing FOLDER"}" \
+    "${RIGHTS:?"Missing RIGHTS"}" \
+    "${SUGGESTED_REPOSITORY}" \
     && exit 0
 
 exit 1

@@ -1,13 +1,10 @@
 #!/bin/bash
+source /cis/core/base.module.sh
 
 #WARNING: Used for core functionality in setup.sh
 #         DO NOT rename the script and test changes well!
 
 
-
-# Folders always ends with an tailing '/'
-_SCRIPT="$(readlink -f "${0}" 2> /dev/null)"
-_CIS_ROOT="${_SCRIPT%%/core/*}/"               #Removes longest  matching pattern '/core/*' from the end
 
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
@@ -24,11 +21,11 @@ function addToCrontabEveryHour() {
         && return 0
 
     [ "$(id -u)" == "0" ] \
-        && echo "${_CIS_ROOT:?"Missing CIS_ROOT"}" | grep -F 'home' &> /dev/null \
+        && echo "${CIS[ROOT]:?"Missing CIS_ROOT"}" | grep -F 'home' &> /dev/null \
         && echo "SUCCESS: Although the entry will be skipped:       ("$(readlink -f ${0})")" \
         && echo "  - '${_STRING}'" \
         && echo "  that is because the current environment is:" \
-        && echo "    - ${_CIS_ROOT}" \
+        && echo "    - ${CIS[ROOT]}" \
         && return 0
 
     [ "$(id -u)" == "0" ] \
@@ -47,9 +44,11 @@ function addToCrontabEveryHour() {
 }
 
 # sanitizes all parameters
+base.set COMMAND "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set MINUTE_VALUE "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
 addToCrontabEveryHour \
-    "$(echo ${1} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
-    "$(echo ${2} | sed -E 's|[^a-zA-Z0-9/:@._-]*||g')" \
+    "${COMMAND:?"Missing COMMAND"}" \
+    "${MINUTE_VALUE:?"Missing MINUTE_VALUE"}" \
     && exit 0
 
 exit 1
