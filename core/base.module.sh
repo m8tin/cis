@@ -70,27 +70,30 @@ function prepare.setCIS() {
     _FULLBASENAME="$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)"
     _FULLSCRIPTNAME="$(realpath "${0}" 2> /dev/null)"
 
+    # Folders always ends with an tailing '/'
     _ROOT_TRUNK="${_FULLSCRIPTNAME%cis/*}"
-    while [ ! -d "${_ROOT_TRUNK}cis/core/" ]; do
-        [ "${_ROOT_TRUNK}" == "${_FULLSCRIPTNAME}" ] \
-            && base.abort '  Unable to find root folder of CIS!' 'It seams the script does not belong to CIS.'
+    while true; do
+        # Because we tried to cut the pattern 'cis/*', but nothing happened we know the pattern was not found.
+        # So we can not derive root of cis from the script, but we can fall back to the module's own location.
+        [ "${_FULLSCRIPTNAME}" == "${_ROOT_TRUNK}" ] \
+            && _CIS_ROOT="${_FULLBASENAME%/*}/" \
+            && _CIS_ROOT="${_CIS_ROOT%core/*}" \
+            && break
+
+        [ -d "${_ROOT_TRUNK}cis/core/" ] \
+            && [ -d "${_ROOT_TRUNK}cis/definitions/" ] \
+            && [ -d "${_ROOT_TRUNK}cis/states/" ] \
+            && _CIS_ROOT="${_ROOT_TRUNK}cis/" \
+            && break
 
         [ "${_ROOT_TRUNK}" == "/" ] \
             && base.abort '  Unable to find root folder of CIS!' 'This state was reached unexpected.'
 
         _ROOT_TRUNK="${_ROOT_TRUNK%cis/*}"
     done
-
-    # Folders always ends with an tailing '/'
-    _CIS_ROOT="${_ROOT_TRUNK:?"Missing ROOT_TRUNK"}cis/"
     readonly _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME _CIS_ROOT
 
-    [ -d "${_CIS_ROOT:?"Missing CIS_ROOT"}" ] \
-        && [ -d "${_CIS_ROOT}core/" ] \
-        && [ -d "${_CIS_ROOT}definitions/" ] \
-        && [ -d "${_CIS_ROOT}states/" ] \
-        && CIS[ROOT]="${_CIS_ROOT}"
-
+    CIS[ROOT]="${_CIS_ROOT}"
     CIS[DOMAIN]="$(base.printOwnDomain "${CIS[ROOT]:?"Missing global CIS_ROOT"}")"
 
     [ -z "${CIS[DOMAIN]}" ] \
