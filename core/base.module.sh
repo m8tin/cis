@@ -185,8 +185,8 @@ function prepare.setPATH() {
 function base.abort() {
     # Minimalmode in case of emergency
     [[ "${COLOR[SET]:+isset}" != "isset" ]] \
-        && printf "\n%b\n" "Script aborted during preparation (State: '${CIS[SET]:-""}')!" >&2  \
-        && printf "  %b\n\n" "${@}" >&2 \
+        && printf -- "\n%b\n" "Script aborted during preparation (State: '${CIS[SET]:-""}')!" >&2  \
+        && printf -- "  %b\n\n" "${@}" >&2 \
         && exit 1
 
     local _FULLSCRIPTNAME=$(realpath "${0}" 2> /dev/null)
@@ -293,7 +293,7 @@ function base.printEnvironment() {
     echo "Content of array CIS: (all folders end with an tailing '/')"
     echo "-----------------------------------------------------------"
     for _KEY in "${!CIS[@]}"; do
-        printf "  %s: %s\n" "CIS[${_KEY}]" "${CIS[${_KEY}]}"
+        printf -- "  %s: %s\n" "CIS[${_KEY}]" "${CIS[${_KEY}]}"
     done
     return 0
 }
@@ -333,7 +333,7 @@ function base.printOwnDomain() {
 
     [ -n "${_OVERRIDE_DOMAIN}" ] \
         && [ "${_OVERRIDE_DOMAIN}" != "${_BOOT_DOMAIN}" ] \
-        && printf "WARNING: Domain has been overridden by: %s\n\n" "${_OVERRIDE_DOMAIN_FILE}" >&2 \
+        && printf -- "WARNING: Domain has been overridden by: %s\n\n" "${_OVERRIDE_DOMAIN_FILE}" >&2 \
         && echo "${_OVERRIDE_DOMAIN}" \
         && return 0
 
@@ -341,7 +341,7 @@ function base.printOwnDomain() {
         && echo "${_BOOT_DOMAIN}" \
         && return 0
 
-    printf "It was impossible to find out the domain of this host, please prepare this host first.\n" >&2
+    printf -- "It was impossible to find out the domain of this host, please prepare this host first.\n" >&2
     return 1
 }
 
@@ -365,7 +365,7 @@ function base.printWithColor() {
         _MESSAGE=$(cat)
     fi
 
-    printf "%b%b%b" "${_COLOR:-""}" "${_MESSAGE}" "${_NO_COLOR:-""}" \
+    printf -- "%b%b%b" "${_COLOR:-""}" "${_MESSAGE}" "${_NO_COLOR:-""}" \
         && return 0
 
     return 1
@@ -373,13 +373,18 @@ function base.printWithColor() {
 
 function base.set() {
     local _VARNAME="${1:?"base.set(): Missing first parameter VARNAME"}"
+    local _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
     local _VALUE="${2}"
     local _REGEX="${3:?"base.set(): Missing third parameter REGEX"}"
 
+    [ "${_VARNAME}" != "${_CLEAN_VARNAME}" ] \
+        && echo "❌ Security base.set(): Invalid name of variable: ${_VARNAME}" >&2 \
+        && exit 1
+
     # Sets the value to a global variable with name $_VARNAME
     [[ "${_VALUE}" =~ $_REGEX ]] \
-        && printf -v "${_VARNAME}" "%s" "${_VALUE}" \
-        && readonly "${_VARNAME}" \
+        && printf -v "${_CLEAN_VARNAME}" -- "%s" "${_VALUE}" \
+        && readonly "${_CLEAN_VARNAME}" \
         && return 0
 
     echo "❌ Security base.set(): Validation '$_REGEX' failed for ${_VARNAME}" >&2
@@ -404,7 +409,7 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo
     echo "Now you can use the functions provided by this module inside your script:"
     echo "-------------------------------------------------------------------------"
-    declare -F | grep "base." | cut -d" " -f3 | xargs -n1 printf "  %s\n"
+    declare -F | grep "base." | cut -d" " -f3 | xargs -n1 printf -- "  %s\n"
     exit 1
 elif [ "${CIS[SET]}" == "ready" ]; then
     base.log debug "Module '${BASH_SOURCE[0]}' already loaded"
