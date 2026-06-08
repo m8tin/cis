@@ -4,56 +4,45 @@ source /cis/core/base.module.sh
 
 
 function stopObsoleteScreenSession() {
-    local _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _DEFINITIONS _COMPOSITION _PID
-    _RECEIVERHOST="${1:?"stopObsoleteScreenSession(): Missing first parameter RECEIVERHOST"}"
-    _SYNCHOSTS_FILE="${2:?"stopObsoleteScreenSession(): Missing second parameter SYNCHOSTS_FILE"}"
-    _SCREEN_SESSION="${3:?"stopObsoleteScreenSession(): Missing third parameter SCREEN_SESSION"}"
-    _DEFINITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}"
+    local _SCREEN_SESSION _COMPOSITION _PID
+    _SCREEN_SESSION="${1:?"stopObsoleteScreenSession(): Missing first parameter SCREEN_SESSION"}"
     _COMPOSITION=$(echo "$_SCREEN_SESSION" | grep -oE "[^:]+$")
     _PID=$(echo "$_SCREEN_SESSION" | grep -oE "^[0-9]+")
-    readonly _RECEIVERHOST _SYNCHOSTS_FILE _SCREEN_SESSION _DEFINITIONS _COMPOSITION _PID
+    readonly _SCREEN_SESSION _COMPOSITION _PID
 
-    ! grep -qiE "^${_RECEIVERHOST}$" "${_DEFINITIONS}compositions/${_COMPOSITION}/${_SYNCHOSTS_FILE}" \
+    ! isSyncHostForComposition "${_COMPOSITION}" \
         && echo "Stopping sync screen session of composition: ${_COMPOSITION}" \
         && screen -XS "${_PID}" quit
 }
 
 function cleanSessions() {
-    local _RECEIVERHOST _SYNCHOSTS_FILE
-    _RECEIVERHOST="${1:?"cleanSessions(): Missing first parameter RECEIVERHOST"}"
-    _SYNCHOSTS_FILE="${2:?"cleanSessions(): Missing second parameter SYNCHOSTS_FILE"}"
-    readonly _RECEIVERHOST _SYNCHOSTS_FILE
-
     screen -ls | grep -oE "[0-9]+\.composition-sync\:[a-zA-Z0-9_-]+" | while read -r _SCREEN_SESSION; do
-        stopObsoleteScreenSession "${_RECEIVERHOST}" "${_SYNCHOSTS_FILE}" "${_SCREEN_SESSION}"
+        stopObsoleteScreenSession "${_SCREEN_SESSION}"
     done
 }
 
 function startMissingScreenSession() {
-    local _COMPOSITION _SSH_PORT _SCRIPT
+    local _COMPOSITION _SCRIPT
     _COMPOSITION="${1:?"startMissingScreenSession(): Missing first parameter COMPOSITION"}"
-    _SSH_PORT="${2:-22}"
     _SCRIPT="${CIS[FULLSCRIPTNAME]:?"startMissingScreenSession(): Missing CIS_FULLSCRIPTNAME"}"
-    readonly _COMPOSITION _SSH_PORT _SCRIPT
+    readonly _COMPOSITION _SCRIPT
 
     ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
         && echo "Starting screen sync session of composition: ${_COMPOSITION}" \
-        && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loop "${_COMPOSITION}" "${_SSH_PORT}"
+        && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loopSingle "${_COMPOSITION}"
 }
 
 function addSessions() {
-    local _RECEIVERHOST _SYNCHOSTS_FILE _DEFINITIONS
-    _RECEIVERHOST="${1:?"addSessions(): Missing first parameter RECEIVERHOST"}"
-    _SYNCHOSTS_FILE="${2:?"addSessions(): Missing second parameter SYNCHOSTS_FILE"}"
-    _DEFINITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}"
-    readonly _RECEIVERHOST _SYNCHOSTS_FILE _DEFINITIONS
+    local _COMPOSITIONS
+    _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
+    readonly _COMPOSITIONS
 
-    local _COMPOSITION
-    grep -lrE "^${_RECEIVERHOST}" ${_DEFINITIONS}compositions/*/${_SYNCHOSTS_FILE} | while read -r _CURRENT_SYNCHOSTS_FILE; do
-        _SSH_PORT=$(grep -E "^${_RECEIVERHOST} usePort [0-9]*.*$" "${_CURRENT_SYNCHOSTS_FILE}" | cut -d' ' -f3 | xargs)
-        _COMPOSITION="${_CURRENT_SYNCHOSTS_FILE%/*}"
-        _COMPOSITION="${_COMPOSITION##*/}"
-        startMissingScreenSession "${_COMPOSITION}" "${_SSH_PORT}"
+    local _composition
+    for _composition in "${_COMPOSITIONS}"*/; do
+        _composition="${_composition%/}"
+        _composition="${_composition##*/}"
+        isSyncHostForComposition "${_composition}" \
+            && startMissingScreenSession "${_composition}"
     done
 }
 
@@ -73,6 +62,25 @@ function destroySyncSnapshot() {
     return 1
 }
 
+function isSyncHostForComposition() {
+    local _COMPOSITION _CURRENTHOST_FILE _RECEIVERHOST _SYNCHOST_FILE
+    _COMPOSITION="${1:?"isSyncHostForComposition(): Missing first parameter COMPOSITION"}"
+    _CURRENTHOST_FILE="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host"
+    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
+    _SYNCHOST_FILE="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/composition-sync-hosts"
+    readonly _COMPOSITION _CURRENTHOST_FILE _RECEIVERHOST _SYNCHOST_FILE
+
+    # There has to be a host running the composition as current host (file exists),
+    #   and this host cannot be sync-host also (file content is not this host).
+    # After that check if this host is listed as composition-sync-host.
+    [ -f "${_CURRENTHOST_FILE}" ] \
+        && ! head -n 1 "${_CURRENTHOST_FILE}" 2> /dev/null | grep -q -F -- "${_RECEIVERHOST}" \
+        && grep -q -F -- "${_RECEIVERHOST}" "${_SYNCHOST_FILE}" 2> /dev/null \
+        && return 0
+
+    return 1
+}
+
 function protectZFS() {
     local _ZFS
     _ZFS="${1:?"protectZFS(): Missing first parameter ZFS"}"
@@ -86,8 +94,8 @@ function protectZFS() {
 
 function removeForeignSyncSnapshots() {
     local _RECEIVERHOST _ZFS
-    _RECEIVERHOST="${1:?"removeForeignSyncSnapshots(): Missing first parameter RECEIVERHOST"}"
-    _ZFS="${2:?"removeForeignSyncSnapshots(): Missing second parameter ZFS"}"
+    _ZFS="${1:?"removeForeignSyncSnapshots(): Missing first parameter ZFS"}"
+    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
     readonly _RECEIVERHOST _ZFS
 
     zfs list -t snapshot -H -o name "${_ZFS}" | grep -- "${_ZFS}@SYNC" | grep -v -i "@SYNC_${_RECEIVERHOST}_" | while read _SNAP; do
@@ -101,8 +109,8 @@ function removeForeignSyncSnapshots() {
 
 function removeOutdatedSyncSnapshots() {
     local _RECEIVERHOST _ZFS _NEWEST_SNAPSHOT
-    _RECEIVERHOST="${1:?"removeOutdatedSyncSnapshots(): Missing first parameter RECEIVERHOST"}"
-    _ZFS="${2:?"removeOutdatedSyncSnapshots(): Missing second parameter ZFS"}"
+    _ZFS="${1:?"removeOutdatedSyncSnapshots(): Missing first parameter ZFS"}"
+    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
     _NEWEST_SNAPSHOT=$(zfs list -H -o name -S name -t snapshot "${_ZFS}" | grep -E "^${_ZFS}@SYNC_${_RECEIVERHOST}_" | head -n 1)
     readonly _RECEIVERHOST _ZFS _NEWEST_SNAPSHOT
 
@@ -121,8 +129,8 @@ function removeOutdatedSyncSnapshots() {
 
 function receive() {
     local _RECEIVERHOST _COMPOSITION _SOURCEHOST _SSH_PORT _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
-    _RECEIVERHOST="${1:?"receive(): Missing first parameter RECEIVERHOST"}"
-    _COMPOSITION="${2:?"receive(): Missing second parameter COMPOSITION"}"
+    _COMPOSITION="${1:?"receive(): Missing first parameter COMPOSITION"}"
+    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
     _SOURCEHOST=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host" 2> /dev/null)
     base.set _SOURCEHOST "${_SOURCEHOST}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
     _SSH_PORT=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/ssh-port" 2> /dev/null)
@@ -160,13 +168,13 @@ function receive() {
             echo "  - Resume token:     ${_RESUME_TOKEN}"
             echo "Current state of snapshots:"
             zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
-            tryRollbackToRepair "${_COMPOSITION}" "${_RECEIVERHOST}" "${_ZFS}" && return 0
+            tryRollbackToRepair "${_COMPOSITION}" "${_ZFS}" && return 0
             return 1
         fi
 
         protectZFS "${_ZFS}"
-        removeForeignSyncSnapshots "${_RECEIVERHOST}" "${_ZFS}"
-        removeOutdatedSyncSnapshots "${_RECEIVERHOST}" "${_ZFS}"
+        removeForeignSyncSnapshots "${_ZFS}"
+        removeOutdatedSyncSnapshots "${_ZFS}"
 
     ) 9>>/tmp/synccomposition.${_COMPOSITION}.lock
 
@@ -175,11 +183,45 @@ function receive() {
     return 1
 }
 
+function receiveLoopSingle() {
+    local _COMPOSITION
+    _COMPOSITION="${1:?"receiveLoopSingle(): Missing first parameter COMPOSITION"}"
+    readonly _COMPOSITION
+
+    while true; do
+        receive "${_COMPOSITION}" \
+            && echo "Sleep for 5s" \
+            && sleep 5 \
+            && echo \
+            && continue
+
+        echo
+        echo "Waiting 5min then ABORT!"
+        sleep 300
+        break
+    done
+}
+
+function receiveOnceAll() {
+    local _COMPOSITIONS
+    _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
+    readonly _COMPOSITIONS
+
+    for _composition in "${_COMPOSITIONS}"*/; do
+        _composition="${_composition%/}"
+        _composition="${_composition##*/}"
+        isSyncHostForComposition "${_composition}" \
+            && receive "${_composition}"
+    done
+
+    return 0
+}
+
 function tryRollbackToRepair() {
     local _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
     _COMPOSITION="${1:?"tryRollbackToRepair(): Missing first parameter COMPOSITION"}"
-    _RECEIVERHOST="${2:?"tryRollbackToRepair(): Missing second parameter RECEIVERHOST"}"
-    _ZFS="${3:?"tryRollbackToRepair(): Missing third parameter ZFS"}"
+    _ZFS="${2:?"tryRollbackToRepair(): Missing second parameter ZFS"}"
+    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
     _ROLLBACK_DAY=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
     base.set _ROLLBACK_DAY "${_ROLLBACK_DAY:-'2020-01-01'}" '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
     _ROLLBACK_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
@@ -198,33 +240,27 @@ function tryRollbackToRepair() {
 }
 
 
+
 # Parameter 1: only one of these values are allowed (--all, --once, --loop)
 # Parameter 2: is optional '()?' and only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
-# Value 3    : only a subset of alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
-base.set MODE "${1}" '^(--all|--once|--loop)$'
+base.set MODE "${1}" '^(--onceAll|--onceSingle|--loopAll|--loopSingle)$'
 base.set COMPOSITION "${2}" '^([a-zA-Z0-9][a-zA-Z0-9_-]*)?$'
-base.set RECEIVERHOST "$(hostname -b)" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
 
-[ "${MODE}" == "--all" ] \
-    && cleanSessions "${RECEIVERHOST}" composition-sync-hosts \
-    && addSessions "${RECEIVERHOST}" composition-sync-hosts \
+[ "${MODE}" == "--onceAll" ] \
+    && receiveOnceAll \
     && exit 0
 
-[ "${MODE}" == "--once" ] \
-    && receive "${RECEIVERHOST}" "${COMPOSITION}" \
+[ "${MODE}" == "--onceSingle" ] \
+    && receive "${COMPOSITION}" \
     && exit 0
 
-[ "${MODE}" == "--loop" ] && while true; do
-    receive "${RECEIVERHOST}" "${COMPOSITION}" \
-        && echo "Sleep for 5s" \
-        && sleep 5 \
-        && echo \
-        && continue
+[ "${MODE}" == "--loopAll" ] \
+    && cleanSessions \
+    && addSessions \
+    && exit 0
 
-    echo
-    echo "Waiting 5min then ABORT!"
-    sleep 300
-    break
-done
+[ "${MODE}" == "--loopSingle" ] \
+    && receiveLoopSingle "${COMPOSITION}" \
+    && exit 0
 
 exit 1
