@@ -81,20 +81,21 @@ function setup() {
     readonly _COMMAND _PAM_FILE
 
     ! [ -f "${_PAM_FILE}" ] \
-        && printf "FAILURE: Missing file: %s\n" "${_PAM_FILE:?"Missing PAM_FILE"}" >&2 \
+        && printf -- "FAILURE: Missing file: %s\n" "${_PAM_FILE:?"Missing PAM_FILE"}" >&2 \
         && exit 1
 
     # Lines are already appended, so nothing is to do, therefore no setup.
     grep -q -F "/${CIS[SCRIPTNAME]?:"Missing SCRIPTNAME"}" "${_PAM_FILE}" \
+        && printf -- "FAILURE: Command have already been appended to the file: '%s'\n" "${_PAM_FILE}" >&2 \
         && return 1
 
     # Append command to call this script, which is the setup.
-    printf "Appending the following command to file '%s':\n  - %s\n" "${_PAM_FILE}" "${_COMMAND}" >&2 \
-        && printf "\n#Call this script on each ssh-login\n%s\n" "${_COMMAND}" >> "${_PAM_FILE}" \
-        && printf "SUCCESS: Setup completed.\n" >&2 \
+    printf -- "Appending the following command to file '%s':\n  - %s\n" "${_PAM_FILE}" "${_COMMAND}" >&2 \
+        && printf -- "\n#Call this script on each ssh-login\n%s\n" "${_COMMAND}" >> "${_PAM_FILE}" \
+        && printf -- "SUCCESS: Setup completed.\n" >&2 \
         && return 0
 
-    printf "FAILURE: Setup of '%s' failed.\n" "${CIS[SCRIPTNAME]}" >&2
+    printf -- "FAILURE: Setup of '%s' failed.\n" "${CIS[SCRIPTNAME]}" >&2
     exit 1
 }
 

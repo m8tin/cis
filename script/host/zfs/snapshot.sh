@@ -27,7 +27,7 @@ function cleanup() {
         fi
 
         [ -n "${_ZFS}" ] \
-            && printf %b "Cleaning snapshots of: '${_ZFS}'\n" \
+            && printf -- "Cleaning snapshots of: '%b'\n" "${_ZFS}" \
             && local _LIST=( $(zfs list -t snap -H -o name -S creation "${_ZFS}" | grep -F '@SNAP' ) )
 
         # Nothing to do
@@ -40,40 +40,40 @@ function cleanup() {
 
         for _SNAPSHOT in "${_LIST[@]}"; do
             case "${_SNAPSHOT}" in
-                *"@SNAPMINUTELY_"*) 
+                *"@SNAPMINUTELY_"*)
                     ((_COUNT_MINUTELY++))
                     if [ ${_COUNT_MINUTELY} -gt ${_MINUTELY_MIN} ]; then
-                        printf %s "  - remove snapshot (${_COUNT_MINUTELY}): '@${_SNAPSHOT#*@}' ... " >&2
+                        printf -- "  - remove snapshot (%s): '@%s' ... " "${_COUNT_MINUTELY}" "${_SNAPSHOT#*@}" >&2
                         zfs destroy "${_SNAPSHOT}" \
-                            && printf %b '(done)\n' \
-                            || printf %b '(FAIL)\n'
+                            && printf -- '(done)\n' \
+                            || printf -- '(FAIL)\n'
                     fi
                     ;;
-                *"@SNAPHOURLY_"*) 
+                *"@SNAPHOURLY_"*)
                     ((_COUNT_HOURLY++))
                     if [ ${_COUNT_HOURLY} -gt ${_HOURLY_MIN} ]; then
-                        printf %s "  - remove snapshot (${_COUNT_HOURLY}): '@${_SNAPSHOT#*@}' ... " >&2
+                        printf -- "  - remove snapshot (%s): '@%s' ... " "${_COUNT_HOURLY}" "${_SNAPSHOT#*@}" >&2
                         zfs destroy "${_SNAPSHOT}" \
-                            && printf %b '(done)\n' \
-                            || printf %b '(FAIL)\n'
+                            && printf -- '(done)\n' \
+                            || printf -- '(FAIL)\n'
                     fi
                     ;;
-                *"@SNAPDAILY_"*) 
+                *"@SNAPDAILY_"*)
                     ((_COUNT_DAILY++))
                     if [ ${_COUNT_DAILY} -gt ${_DAILY_MIN} ]; then
-                        printf %s "  - remove snapshot (${_COUNT_DAILY}): '@${_SNAPSHOT#*@}' ... " >&2
+                        printf -- "  - remove snapshot (%s): '@%s' ... " "${_COUNT_DAILY}" "${_SNAPSHOT#*@}" >&2
                         zfs destroy "${_SNAPSHOT}" \
-                            && printf %b '(done)\n' \
-                            || printf %b '(FAIL)\n'
+                            && printf -- '(done)\n' \
+                            || printf -- '(FAIL)\n'
                     fi
                     ;;
-                *"@SNAPMONTHLY_"*) 
+                *"@SNAPMONTHLY_"*)
                     ((_COUNT_MONTHLY++))
                     if [ ${_COUNT_MONTHLY} -gt ${_MONTHLY_MIN} ]; then
-                        printf %s "  - remove snapshot (${_COUNT_MONTHLY}): '@${_SNAPSHOT#*@}' ... " >&2
+                        printf -- "  - remove snapshot ($s): '@%s' ... " "${_COUNT_MONTHLY}" "${_SNAPSHOT#*@}" >&2
                         zfs destroy "${_SNAPSHOT}" \
-                            && printf %b '(done)\n' \
-                            || printf %b '(FAIL)\n'
+                            && printf -- '(done)\n' \
+                            || printf -- '(FAIL)\n'
                     fi
                     ;;
             esac
@@ -103,14 +103,14 @@ function snapshot() {
         _ZFS_BRANCH="${_ZFS_BRANCH%/}"        #Remove tailing '/' if exists
 
         [ "${_CURRENT_HOST}" != "${CIS[HOST]:?"Missing CIS_HOST"}" ] \
-            && printf %b "ZFS will be skipped, because this host '${CIS[HOST]}' is not running the composition:\n" >&2 \
-            && printf %b "  - Composition : ${_COMPOSITION}\n" >&2 \
-            && printf %b "  - Current host: ${_CURRENT_HOST}\n" >&2 \
+            && printf -- "ZFS will be skipped, because this host '%b' is not running the composition:\n" "${CIS[HOST]}" >&2 \
+            && printf -- "  - Composition : %b\n" "${_COMPOSITION}" >&2 \
+            && printf -- "  - Current host: %b\n" "${_CURRENT_HOST}" >&2 \
             && continue
 
         _ZFS="$(zfs list -H -o name "${_ZFS_BRANCH:-"zpool1/persistent"}/${_COMPOSITION}" 2> /dev/null)"
         [ -z "${_ZFS}" ] \
-            && printf %b "FAILURE - ZFS not found: ${_ZFS_BRANCH:-"zpool1/persistent"}/${_COMPOSITION}\n" >&2 \
+            && printf -- "FAILURE - ZFS not found: %b/%b\n" "${_ZFS_BRANCH:-"zpool1/persistent"}" "${_COMPOSITION}" >&2 \
             && continue
 
         (

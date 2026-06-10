@@ -41,25 +41,25 @@ function update_repositories() {
         && return 0
 
     [ "${_MODE}" == "--scripts" ] \
-        && printf "Host $HOSTNAME updating scripts: ${CIS[ROOT]:?"Missing CISROOT"} ... " \
+        && printf -- "Host $HOSTNAME updating scripts: ${CIS[ROOT]:?"Missing CISROOT"} ... " \
         && (git -C "${CIS[ROOT]:?"Missing CISROOT"}" pull &> /dev/null) \
         && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--definitions" ] \
-        && printf "Host ${HOSTNAME} updating definitions: ${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"} ... " \
+        && printf -- "Host ${HOSTNAME} updating definitions: ${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"} ... " \
         && (git -C "${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}" pull &> /dev/null) \
         && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--states" ] \
-        && printf "Host ${HOSTNAME} updating states: ${CIS[DOMAINSTATES]:?"Missing STATES"} ... " \
+        && printf -- "Host ${HOSTNAME} updating states: ${CIS[DOMAINSTATES]:?"Missing STATES"} ... " \
         && (git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull &> /dev/null) \
         && echo "(done)" \
         && return 0
 
     [ "${_MODE}" == "--core" ] \
-        && printf "Host ${HOSTNAME} updating core including scripts, definitions and states ... " \
+        && printf -- "Host ${HOSTNAME} updating core including scripts, definitions and states ... " \
         && (git -C "${CIS[ROOT]:?"Missing CISROOT"}" pull &> /dev/null) \
         && (git -C "${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}" pull &> /dev/null) \
         && (git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull &> /dev/null) \

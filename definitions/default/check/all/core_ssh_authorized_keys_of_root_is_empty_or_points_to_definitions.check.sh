@@ -3,7 +3,7 @@
 _CURRENT_FILE='/root/.ssh/authorized_keys'
 
 [ "$(id -u)" != "0" ] \
-    && printf "(INSUFFICENT RIGHTS) " \
+    && printf -- "(INSUFFICENT RIGHTS) " \
     && exit 1
 
 #No file is ok

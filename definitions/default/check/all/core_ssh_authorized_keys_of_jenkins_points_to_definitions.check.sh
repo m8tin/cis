@@ -3,7 +3,7 @@
 _CURRENT_FILE='/home/jenkins/.ssh/authorized_keys'
 
 [ "$(id -u)" != "0" ] \
-    && printf "(INSUFFICENT RIGHTS) " \
+    && printf -- "(INSUFFICENT RIGHTS) " \
     && exit 1
 
 #File has to be readable, then

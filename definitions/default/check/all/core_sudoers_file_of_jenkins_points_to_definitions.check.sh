@@ -3,7 +3,7 @@
 _CURRENT_FILE='/etc/sudoers.d/allow-jenkins-updateRepositories'
 
 [ "$(id -u)" != "0" ] \
-    && printf "(INSUFFICENT RIGHTS) " \
+    && printf -- "(INSUFFICENT RIGHTS) " \
     && exit 1
 
 #File has to be readable, then
