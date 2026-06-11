@@ -9,6 +9,9 @@
     && echo "Version 4 or newer is required, bash has version : '${BASH_VERSION}'." >&2 \
     && exit 1
 
+# Prevents loading this module twice
+[ "${CIS[SET]}" == "ready" ] && return 0
+
 
 
 function base.checkAllInputParameters() {
@@ -412,7 +415,7 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     declare -F | grep "base." | cut -d" " -f3 | xargs -n1 printf -- "  %s\n"
     exit 1
 elif [ "${CIS[SET]}" == "ready" ]; then
-    base.log debug "Module '${BASH_SOURCE[0]}' already loaded"
+    base.abort "Module '${BASH_SOURCE[0]}' already loaded."
 else
     # If not exists, define a global array 'COLOR'
     trap "base.abort '  User-initiated termination.'" INT \
