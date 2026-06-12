@@ -1,50 +1,8 @@
 #!/bin/bash
 source /cis/core/base.module.sh
+base.loadModule composition
 
 
-
-function stopObsoleteScreenSession() {
-    local _SCREEN_SESSION _COMPOSITION _PID
-    _SCREEN_SESSION="${1:?"stopObsoleteScreenSession(): Missing first parameter SCREEN_SESSION"}"
-    _COMPOSITION=$(echo "$_SCREEN_SESSION" | grep -oE "[^:]+$")
-    _PID=$(echo "$_SCREEN_SESSION" | grep -oE "^[0-9]+")
-    readonly _SCREEN_SESSION _COMPOSITION _PID
-
-    ! isSyncHostForComposition "${_COMPOSITION}" \
-        && echo "Stopping sync screen session of composition: ${_COMPOSITION}" \
-        && screen -XS "${_PID}" quit
-}
-
-function cleanSessions() {
-    screen -ls | grep -oE "[0-9]+\.composition-sync\:[a-zA-Z0-9_-]+" | while read -r _SCREEN_SESSION; do
-        stopObsoleteScreenSession "${_SCREEN_SESSION}"
-    done
-}
-
-function startMissingScreenSession() {
-    local _COMPOSITION _SCRIPT
-    _COMPOSITION="${1:?"startMissingScreenSession(): Missing first parameter COMPOSITION"}"
-    _SCRIPT="${CIS[FULLSCRIPTNAME]:?"startMissingScreenSession(): Missing CIS_FULLSCRIPTNAME"}"
-    readonly _COMPOSITION _SCRIPT
-
-    ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
-        && echo "Starting screen sync session of composition: ${_COMPOSITION}" \
-        && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loopSingle "${_COMPOSITION}"
-}
-
-function addSessions() {
-    local _COMPOSITIONS
-    _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
-    readonly _COMPOSITIONS
-
-    local _composition
-    for _composition in "${_COMPOSITIONS}"*/; do
-        _composition="${_composition%/}"
-        _composition="${_composition##*/}"
-        isSyncHostForComposition "${_composition}" \
-            && startMissingScreenSession "${_composition}"
-    done
-}
 
 function destroySyncSnapshot() {
     local _ZFS _SNAPSHOT
@@ -57,25 +15,6 @@ function destroySyncSnapshot() {
 
     echo "${_SNAPSHOT}" | grep -qF "${_ZFS:?"destroySyncSnapshot(): Missing ZFS"}@SYNC" \
         && zfs destroy "${_SNAPSHOT}" \
-        && return 0
-
-    return 1
-}
-
-function isSyncHostForComposition() {
-    local _COMPOSITION _CURRENTHOST_FILE _RECEIVERHOST _SYNCHOST_FILE
-    _COMPOSITION="${1:?"isSyncHostForComposition(): Missing first parameter COMPOSITION"}"
-    _CURRENTHOST_FILE="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host"
-    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
-    _SYNCHOST_FILE="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/composition-sync-hosts"
-    readonly _COMPOSITION _CURRENTHOST_FILE _RECEIVERHOST _SYNCHOST_FILE
-
-    # There has to be a host running the composition as current host (file exists),
-    #   and this host cannot be sync-host also (file content is not this host).
-    # After that check if this host is listed as composition-sync-host.
-    [ -f "${_CURRENTHOST_FILE}" ] \
-        && ! head -n 1 "${_CURRENTHOST_FILE}" 2> /dev/null | grep -q -F -- "${_RECEIVERHOST}" \
-        && grep -q -F -- "${_RECEIVERHOST}" "${_SYNCHOST_FILE}" 2> /dev/null \
         && return 0
 
     return 1
@@ -125,6 +64,27 @@ function removeOutdatedSyncSnapshots() {
     done
 
     return 0
+}
+
+function tryRollbackToRepair() {
+    local _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
+    _COMPOSITION="${1:?"tryRollbackToRepair(): Missing first parameter COMPOSITION"}"
+    _ZFS="${2:?"tryRollbackToRepair(): Missing second parameter ZFS"}"
+    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
+    _ROLLBACK_DAY=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
+    base.set _ROLLBACK_DAY "${_ROLLBACK_DAY:-'2020-01-01'}" '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    _ROLLBACK_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
+    readonly _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_SNAPSHOT
+
+    # Not allowed to do anything
+    [ -z "${_ROLLBACK_SNAPSHOT}" ] && return 1
+
+    # Remove at most the two newest sync snapshots, if the day matches with the rollback file
+    echo "Try to fix by removing: '${_ROLLBACK_SNAPSHOT}'" \
+        && zfs destroy "${_ROLLBACK_SNAPSHOT:?"tryRollbackToRepair(): Missing _ROLLBACK_SNAPSHOT"}" \
+        && return 0
+
+    return 1
 }
 
 function receive() {
@@ -183,84 +143,111 @@ function receive() {
     return 1
 }
 
+function receiveLoopAll() {
+    local _SCRIPT
+    _SCRIPT="${CIS[FULLSCRIPTNAME]:?"startMissingScreenSession(): Missing CIS_FULLSCRIPTNAME"}"
+    readonly _SCRIPT
+
+    composition.printAllSyncedByThisHost | while read -r _COMPOSITION; do
+        ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
+            && echo "Starting screen sync session of composition: ${_COMPOSITION}" \
+            && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loopSingle "${_COMPOSITION}"
+    done
+}
+
 function receiveLoopSingle() {
     local _COMPOSITION
     _COMPOSITION="${1:?"receiveLoopSingle(): Missing first parameter COMPOSITION"}"
     readonly _COMPOSITION
 
-    while true; do
+    while composition.isSyncedByThisHost "${_COMPOSITION}"; do
         receive "${_COMPOSITION}" \
             && echo "Sleep for 5s" \
             && sleep 5 \
             && echo \
             && continue
 
+        # If there is a screen session this keeps it alive in case of an error for debugging
         echo
         echo "Waiting 5min then ABORT!"
         sleep 300
-        break
+        return 1
     done
+
+    ! composition.isSyncedByThisHost "${_COMPOSITION}" \
+        && echo "This host '${CIS[HOST]}' is no sync-host (anymore) for composition: '${_COMPOSITION}'"
 }
 
 function receiveOnceAll() {
-    local _COMPOSITIONS
-    _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
-    readonly _COMPOSITIONS
+    local _COMPOSITION
 
-    for _composition in "${_COMPOSITIONS}"*/; do
-        _composition="${_composition%/}"
-        _composition="${_composition##*/}"
-        isSyncHostForComposition "${_composition}" \
-            && receive "${_composition}"
+    composition.printAllSyncedByThisHost | while read -r _COMPOSITION; do
+        receive "${_COMPOSITION}"
     done
 
     return 0
 }
 
-function tryRollbackToRepair() {
-    local _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_DAY _ROLLBACK_SNAPSHOT
-    _COMPOSITION="${1:?"tryRollbackToRepair(): Missing first parameter COMPOSITION"}"
-    _ZFS="${2:?"tryRollbackToRepair(): Missing second parameter ZFS"}"
-    _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
-    _ROLLBACK_DAY=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
-    base.set _ROLLBACK_DAY "${_ROLLBACK_DAY:-'2020-01-01'}" '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-    _ROLLBACK_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
-    readonly _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_SNAPSHOT
+function receiveOnceSingle() {
+    local _COMPOSITION
+    _COMPOSITION="${1:?"receiveOnceSingle(): Missing first parameter COMPOSITION"}"
+    readonly _COMPOSITION
 
-    # Nothing to do
-    [ -z "${_ROLLBACK_SNAPSHOT}" ] && return 0
+    ! composition.isSyncedByThisHost "${_COMPOSITION}" \
+        && echo "This host '${CIS[HOST]}' is no sync-host for composition: '${_COMPOSITION}'" \
+        && return 1
 
-    # Remove at most the two newest sync snapshots, if the day matches with the rollback file
-    echo "Try to fix by removing: '${_ROLLBACK_SNAPSHOT}'" \
-        && zfs destroy "${_ROLLBACK_SNAPSHOT:?"tryRollbackToRepair(): Missing _ROLLBACK_SNAPSHOT"}" \
+    receive "${_COMPOSITION}" \
         && return 0
 
     return 1
+}
 
+function usage() {
+    echo
+    echo 'Commands:'
+    echo '  --loopAll                   : This will start one screen session per composition ("composition-sync-hosts"),'
+    echo '                                    and run the sync process in an endless loop.'
+    echo '  --onceAll                   : This will run the sync process once for each composition ("composition-sync-hosts").'
+    echo '                                    e.g.: you can use it in crontab as a daily backup.'
+    echo '  --loopSingle COMPOSITION    : This will run the sync process in an endless loop but just for the specified COMPOSITION.'
+    echo '  --onceSingle COMPOSITION    : This will run the sync process once just for the specified COMPOSITION.'
+    echo
+    echo 'Current environment:'
+    echo "    Full name of this script  : FULLSCRIPTNAME='${CIS[FULLSCRIPTNAME]}'"
+    echo "  Configuration:"
+    echo "    Receiving host (this host): RECEIVERHOST='${CIS[HOST]}'"
+
+    return 0
 }
 
 
 
-# Parameter 1: only one of these values are allowed (--all, --once, --loop)
 # Parameter 2: is optional '()?' and only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
-base.set MODE "${1}" '^(--onceAll|--onceSingle|--loopAll|--loopSingle)$'
 base.set COMPOSITION "${2}" '^([a-zA-Z0-9][a-zA-Z0-9_-]*)?$'
 
-[ "${MODE}" == "--onceAll" ] \
-    && receiveOnceAll \
-    && exit 0
-
-[ "${MODE}" == "--onceSingle" ] \
-    && receive "${COMPOSITION}" \
-    && exit 0
-
-[ "${MODE}" == "--loopAll" ] \
-    && cleanSessions \
-    && addSessions \
-    && exit 0
-
-[ "${MODE}" == "--loopSingle" ] \
-    && receiveLoopSingle "${COMPOSITION}" \
-    && exit 0
+case "${1}" in
+    --onceAll)
+        receiveOnceAll \
+            && exit 0
+        ;;
+    --onceSingle)
+        receiveOnceSingle "${COMPOSITION}" \
+            && exit 0
+        ;;
+    --loopAll)
+        receiveLoopAll \
+            && exit 0
+        ;;
+    --loopSingle)
+        receiveLoopSingle "${COMPOSITION}" \
+            && exit 0
+        ;;
+    *)
+        echo "Unknown command '${1}' '${2}'"
+        usage
+        exit 1
+        ;;
+esac
 
 exit 1
