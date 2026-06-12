@@ -3,6 +3,42 @@ source /cis/core/base.module.sh
 
 
 
+function composition.isRunningOnThisHost() {
+    local _COMPOSITION _COMPOSITIONS _COMPOSITION_PATH _CURRENTHOST_FILE
+    _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
+    _COMPOSITION="${1:?"Missing first parameter COMPOSITION"}"
+    _COMPOSITION_PATH="${_COMPOSITIONS}${_COMPOSITION}/"
+    _CURRENTHOST_FILE="current-host"
+    readonly _COMPOSITION _COMPOSITIONS _COMPOSITION_PATH _CURRENTHOST_FILE
+
+    [ -n "${CIS[HOST]}" ] \
+         && [ -f "${_COMPOSITION_PATH}${_CURRENTHOST_FILE}" ] \
+         && head -n 1 -- "${_COMPOSITION_PATH}${_CURRENTHOST_FILE}" | grep -q -E -- "^${CIS[HOST]}" \
+         && return 0
+
+    return 1
+}
+
+function composition.isSyncedByThisHost() {
+    local _COMPOSITION _COMPOSITIONS _COMPOSITION_PATH _CURRENTHOST_FILE _SYNCHOSTS_FILE
+    _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
+    _COMPOSITION="${1:?"Missing first parameter COMPOSITION"}"
+    _COMPOSITION_PATH="${_COMPOSITIONS}${_COMPOSITION}/"
+    _CURRENTHOST_FILE="current-host"
+    _SYNCHOSTS_FILE="composition-sync-hosts"
+    readonly _COMPOSITION _COMPOSITIONS _COMPOSITION_PATH _CURRENTHOST_FILE _SYNCHOSTS_FILE
+
+    # This host either runs the composition or syncs it.
+    # If there is no CURRENTHOST_FILE than the definition is invalid and should not be synced.
+    [ -n "${CIS[HOST]}" ] \
+         && [ -f "${_COMPOSITION_PATH}${_CURRENTHOST_FILE}" ] \
+         && head -n 1 -- "${_COMPOSITION_PATH}${_CURRENTHOST_FILE}" | grep -q -v -E -- "^${CIS[HOST]}" \
+         && grep -q -E -- "^${CIS[HOST]}" "${_COMPOSITION_PATH}${_SYNCHOSTS_FILE}" \
+         && return 0
+
+    return 1
+}
+
 function composition.printAll() {
     local _COMPOSITIONS _CURRENTHOST_FILE
     _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
@@ -23,31 +59,28 @@ function composition.printAllRunningOnThisHost() {
     _CURRENTHOST_FILE="current-host"
     readonly _COMPOSITIONS _CURRENTHOST_FILE
 
-    grep -l -F "${CIS[HOST]}" "${_COMPOSITIONS}"*/"${_CURRENTHOST_FILE}" | while read -r _CURRENTHOST_FILE_PATH; do
-        # Like dirname: removes tailing '/${_CURRENTHOST_FILE}'
-        local _COMPOSITION="${_CURRENTHOST_FILE_PATH%/${_CURRENTHOST_FILE}}"
+    for _COMPOSITION_DIR in "${_COMPOSITIONS}"*; do
+
         # Like basename
-        echo "${_COMPOSITION##*/}"
+        local _COMPOSITION="${_COMPOSITION_DIR##*/}"
+
+        composition.isRunningOnThisHost "${_COMPOSITION}" \
+            && echo "${_COMPOSITION}"
     done
 }
 
-function composition.printAllWhereThisHostSyncs() {
-    local _COMPOSITIONS _CURRENTHOST_FILE _SYNCHOSTS_FILE
+function composition.printAllSyncedByThisHost() {
+    local _COMPOSITIONS
     _COMPOSITIONS="${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/"
-    _CURRENTHOST_FILE="current-host"
-    _SYNCHOSTS_FILE="composition-sync-hosts"
-    readonly _COMPOSITIONS _CURRENTHOST_FILE _SYNCHOSTS_FILE
+    readonly _COMPOSITIONS
 
-    grep -lF "${CIS[HOST]}" "${_COMPOSITIONS}"*/"${_SYNCHOSTS_FILE}" | while read -r _SYNCHOSTS_FILE_PATH; do
+    for _COMPOSITION_DIR in "${_COMPOSITIONS}"*; do
 
-        # Like dirname: removes tailing '/${_SYNCHOSTS_FILE}'
-        local _COMPOSITION="${_SYNCHOSTS_FILE_PATH%/${_SYNCHOSTS_FILE}}"
+        # Like basename
+        local _COMPOSITION="${_COMPOSITION_DIR##*/}"
 
-        # This host either runs the composition or syncs it.
-        # If there is no CURRENTHOST_FILE than the definition is invalid and should not be synced.
-        [ -f "${_COMPOSITION}/${_CURRENTHOST_FILE}" ] \
-             && grep -q -v -F "${CIS[HOST]}" "${_COMPOSITION}/${_CURRENTHOST_FILE}" \
-             && echo "${_COMPOSITION##*/}"
+        composition.isSyncedByThisHost "${_COMPOSITION}" \
+             && echo "${_COMPOSITION}"
     done
 }
 
