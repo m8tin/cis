@@ -13,12 +13,12 @@ function checkPermissions() {
     readonly _FOLDER _RIGHTS
 
     [ "${_RIGHTS}" == "readonly" ] \
-        && [ -d "${_FOLDER}/.git" ] \
+        && [ -d "${_FOLDER}.git" ] \
         && ! git -C "${_FOLDER}" push --dry-run &> /dev/null \
         && return 0
 
     [ "${_RIGHTS}" == "writable" ] \
-        && [ -d "${_FOLDER}/.git" ] \
+        && [ -d "${_FOLDER}.git" ] \
         && git -C "${_FOLDER}" push --dry-run &> /dev/null \
         && return 0
 
@@ -34,12 +34,12 @@ function cloneOrPull() {
     _REPOSITORY="${2:?"Missing second parameter REPOSITORY"}"
     readonly _FOLDER _REPOSITORY
 
-    [ -d "${_FOLDER}/.git" ] \
+    [ -d "${_FOLDER}.git" ] \
         && git -C "${_FOLDER}" pull &> /dev/null \
         && return 0
 
-    ! [ -d "${_FOLDER}/.git" ] \
-        && GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new" git clone "${_REPOSITORY}" "${_FOLDER}" &> /dev/null \
+    ! [ -d "${_FOLDER}.git" ] \
+        && GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new' git clone "${_REPOSITORY}" "${_FOLDER}" &> /dev/null \
         && return 0
 
     echo "FAIL: The local repository is not updatable:       ("$(readlink -f ${0})")" >&2
@@ -99,8 +99,8 @@ function addAndCheckGitRepository() {
 }
 
 # sanitizes all parameters
-base.set FOLDER "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
-base.set RIGHTS "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set FOLDER "${1}" '^[-a-zA-Z0-9/:@._]*/$' || exit 1
+base.set RIGHTS "${2}" '^(readonly|writable)$' || exit 1
 base.set SUGGESTED_REPOSITORY "${3}" '^([-a-zA-Z0-9/:@._]*)?$' || exit 1
 addAndCheckGitRepository \
     "${FOLDER:?"Missing FOLDER"}" \
