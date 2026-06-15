@@ -22,14 +22,14 @@ function base.checkAllInputParameters() {
 
     _SUCCESS="true"
     for _ARG in "${@}"; do
-        if [[ -n "${_ARG}" ]]; then
+        if [ -n "${_ARG}" ]; then
             # Has to start with an alphanumeric char '--' or '/'
             if [[ ! "${_ARG}" =~ ^(--|/)?[[:alnum:]] ]]; then
                 echo "❌ Security base.checkAllInputParameters(): No special characters except '--' or '/' are allowed at the beginning of a parameter: '${_ARG}'" >&2
                 _SUCCESS="false"
             fi
             # No forbidden character is allowed to remain
-            if [[ -n "${_ARG//[${_ALLOWED_CHARS}]/}" ]]; then
+            if [ -n "${_ARG//[${_ALLOWED_CHARS}]/}" ]; then
                 echo "❌ Security base.checkAllInputParameters(): Illegal character found in parameter: '${_ARG}'" >&2
                 _SUCCESS="false"
             fi
@@ -46,18 +46,18 @@ function base.checkScriptforCorrectAssignments() {
     local _LN=0
     local _SUCCESS="true"
 
-    while IFS= read -r _line || [[ -n "${_line}" ]]; do
+    while IFS= read -r _line || [ -n "${_line}" ]; do
         ((_LN++))
 
-        [[ "${_line}" =~ ^[[:space:]]*# ]] && continue # Comments are okay
+        [[ "${_line}" =~ '^[[:space:]]*#' ]] && continue # Comments are okay
 
-        [[ "${_line}" =~ ^[-a-zA-Z0-9_]+=\"?\$\{?([0-9]+|@) ]] && [[ ! "${_line}" =~ "base.set" ]] \
+        [[ "${_line}" =~ '^[-a-zA-Z0-9_]+=\"?\$\{?([0-9]+|@)' ]] && [[ ! "${_line}" =~ 'base.set' ]] \
             && echo "❌ line ${_LN}: direct assignment prohibited! Use 'base.set VARNAME VALUE REGEX' instead." >&2 \
-            && _SUCCESS="false"
+            && _SUCCESS='false'
 
     done < "${0}"
 
-    [ "${_SUCCESS}" == "true" ] \
+    [ "${_SUCCESS}" == 'true' ] \
         && return 0
 
     return 1
@@ -65,7 +65,7 @@ function base.checkScriptforCorrectAssignments() {
 
 function prepare.setCIS() {
     # Check precondition
-    [[ "${CIS[SET]:+isset}" != "isset" ]] \
+    [ "${CIS[SET]:+isset}" != 'isset' ] \
         && base.abort "Array CIS was not initialized correctly."
 
     # Retrieves the variables for this module using 'BASH_SOURCE[0]', the infos about the script using '$0'.
@@ -89,7 +89,7 @@ function prepare.setCIS() {
             && _CIS_ROOT="${_ROOT_TRUNK}cis/" \
             && break
 
-        [ "${_ROOT_TRUNK}" == "/" ] \
+        [ "${_ROOT_TRUNK}" == '/' ] \
             && base.abort '  Unable to find root folder of CIS!' 'This state was reached unexpected.'
 
         _ROOT_TRUNK="${_ROOT_TRUNK%cis/*}"
@@ -144,7 +144,7 @@ function prepare.setCIS() {
 
 function prepare.setCOLOR() {
     # Check the procondition,
-    [[ "${COLOR[SET]:+isset}" != "isset" ]] \
+    [ "${COLOR[SET]:+isset}" != 'isset' ] \
         && base.abort "Array COLOR was not initialized correctly."
 
     # set the values into the global array 'COLOR',
@@ -185,9 +185,28 @@ function prepare.setPATH() {
     return 1
 }
 
+function prepare.setREGEX() {
+    # Check the procondition,
+    [ "${REGEX[SET]:+isset}" != 'isset' ] \
+        && base.abort "Array REGEX was not initialized correctly."
+
+    # set the values into the global array 'REGEX',
+    REGEX[COMMAND]='^([]a-zA-Z0-9[|/_:,." -]+)$'                 #WARNING: Escaping does not work properly here, so we need to position the special characters in a clever way.
+    REGEX[COMPOSITION]='^[a-zA-Z]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$'
+    REGEX[DOMAIN]='^([a-zA-Z][a-zA-Z0-9\.-]*)?[a-zA-Z]{2,}$'
+    REGEX[SNAPSHOT]='^@[a-zA-Z]([a-zA-Z0-9\.:_-]*[a-zA-Z0-9])?$'
+    REGEX[SYNCSNAPSHOT]='^@SYNC_[a-zA-Z0-9\.:_-]*[a-zA-Z0-9]$'
+    REGEX[USER]='^[a-zA-Z]([-a-zA-Z0-9\._]*[a-zA-Z0-9])?$'
+    REGEX[ZFS]='^[a-zA-Z]([a-zA-Z0-9\/_-]*[a-zA-Z0-9])?$'
+
+    # and define the array 'REGEX' as readonly.
+    declare -A -g -r REGEX
+    return 0
+}
+
 function base.abort() {
     # Minimalmode in case of emergency
-    [[ "${COLOR[SET]:+isset}" != "isset" ]] \
+    [ "${COLOR[SET]:+isset}" != 'isset' ] \
         && printf -- "\n%b\n" "Script aborted during preparation (State: '${CIS[SET]:-""}')!" >&2  \
         && printf -- "  %b\n\n" "${@}" >&2 \
         && exit 1
@@ -286,15 +305,15 @@ function base.log() {
 
 function base.printEnvironment() {
     # Check precondition
-    [[ "${CIS[SET]:+isset}" != "isset" ]] \
+    [ "${CIS[SET]:+isset}" != 'isset' ] \
         && declare -A -g CIS=([SET]=unprepared) \
         && prepare.setCIS
 
-    [[ "${CIS[SET]:+isset}" != "isset" ]] \
+    [ "${CIS[SET]:+isset}" != 'isset' ] \
         && return 1
 
-    echo "Content of array CIS: (all folders end with an tailing '/')"
-    echo "-----------------------------------------------------------"
+    echo "Content of array CIS: (all folder-paths end with an tailing '/')"
+    echo "----------------------------------------------------------------------------"
     for _KEY in "${!CIS[@]}"; do
         printf -- "  %s: %s\n" "CIS[${_KEY}]" "${CIS[${_KEY}]}"
     done
@@ -379,10 +398,16 @@ function base.set() {
     local _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
     local _VALUE="${2}"
     local _REGEX="${3:?"base.set(): Missing third parameter REGEX"}"
+    local _MODE="${4}"
 
     [ "${_VARNAME}" != "${_CLEAN_VARNAME}" ] \
-        && echo "❌ Security base.set(): Invalid name of variable: ${_VARNAME}" >&2 \
+        && echo "FAILURE - base.set(): Invalid name of variable: ${_VARNAME}" >&2 \
         && exit 1
+
+    [ -z "${_VALUE}" ] \
+        && [ "${_MODE}" == 'optional' ] \
+        && readonly "${_CLEAN_VARNAME}" \
+        && return 0
 
     # Sets the value to a global variable with name $_VARNAME
     [[ "${_VALUE}" =~ $_REGEX ]] \
@@ -390,8 +415,31 @@ function base.set() {
         && readonly "${_CLEAN_VARNAME}" \
         && return 0
 
-    echo "❌ Security base.set(): Validation '$_REGEX' failed for ${_VARNAME}" >&2
+    echo "FAILURE: - base.set(): Validation '${_REGEX}' failed for ${_VARNAME}" >&2
     exit 1
+}
+
+function base.explain() {
+    local _MODULE_PREFIX
+    _MODULE_PREFIX="${1:?"base.explain(): Missing first parameter MODULE_PREFIX"}"
+    readonly _MODULE_PREFIX
+
+    [ -z "${2}" ] \
+        && echo "Then you can use these functions provided by this module inside your script:" \
+        && echo "  (for function details run: './${_MODULE_PREFIX}.module.sh explain FUNCTION_NAME' )" \
+        && echo "----------------------------------------------------------------------------" \
+        && declare -F | grep -F "${_MODULE_PREFIX}." | cut -d" " -f3 | xargs -n1 printf -- "  %s\n" \
+        && return 0
+
+    [ "${2}" == 'explain' ] \
+        && declare -F | grep -F "${_MODULE_PREFIX}." | cut -d" " -f3 | while read -r _FUNCTION; do
+
+        [ "${3}" == "${_FUNCTION}" ] \
+            && echo "Then you can use the function '${_FUNCTION}()' as follows:" \
+            && echo "----------------------------------------------------------------------------" \
+            && grep -B 10 -F "${_FUNCTION}()" "${_MODULE_PREFIX}.module.sh" | grep -E '^#.*' \
+            && return 0
+    done
 }
 
 
@@ -402,17 +450,15 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo "FAILURE: you are using this module 'base.sh' in a wrong way."
     echo "    It is intended as a utility library and should not be called directly."
     echo
-    echo "Usage: Call the base module at the beginning of your script, like this:"
-    echo "-----------------------------------------------------------------------"
+    echo "Usage: load the base module at the beginning of your script, like this:"
+    echo "----------------------------------------------------------------------------"
     echo
     echo '#!/bin/bash'
     echo 'source /cis/core/base.module.sh'
     echo
-    base.printEnvironment
+    base.explain 'base' "${1}" "${2}"
     echo
-    echo "Now you can use the functions provided by this module inside your script:"
-    echo "-------------------------------------------------------------------------"
-    declare -F | grep "base." | cut -d" " -f3 | xargs -n1 printf -- "  %s\n"
+    [ -z "${1}" ] && base.printEnvironment
     exit 1
 elif [ "${CIS[SET]}" == "ready" ]; then
     base.abort "Module '${BASH_SOURCE[0]}' already loaded."
@@ -422,6 +468,8 @@ else
         && declare -A -g COLOR=([SET]=unprepared) \
         && prepare.setCOLOR \
         && prepare.setPATH "/bin/grep" \
+        && declare -A -g REGEX=([SET]=unprepared) \
+        && prepare.setREGEX \
         && declare -A -g CIS=([SET]=unprepared) \
         && prepare.setCIS \
         && base.checkAllInputParameters "${@}" \
