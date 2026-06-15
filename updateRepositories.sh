@@ -73,7 +73,7 @@ function update_repositories() {
 
 
 # Parameter 1: Only one of these values are allowed, or empty (--core, --definitions, --repair, --scripts, --states, --test)?
-base.set MODE "${1}" '^(--core|--definitions|--repair|--scripts|--states|--test)?$' || exit 1
+base.set MODE "${1}" '^(--core|--definitions|--repair|--scripts|--states|--test)$' optional
 update_repositories "${MODE}" \
     && exit 0
 

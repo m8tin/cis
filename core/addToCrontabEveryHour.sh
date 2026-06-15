@@ -44,8 +44,8 @@ function addToCrontabEveryHour() {
 }
 
 # sanitizes all parameters
-base.set COMMAND "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
-base.set MINUTE_VALUE "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set COMMAND "${1}" '^[-a-zA-Z0-9/:@._]*$'
+base.set MINUTE_VALUE "${2}" '^[-a-zA-Z0-9/:@._]*$'
 addToCrontabEveryHour \
     "${COMMAND:?"Missing COMMAND"}" \
     "${MINUTE_VALUE:?"Missing MINUTE_VALUE"}" \

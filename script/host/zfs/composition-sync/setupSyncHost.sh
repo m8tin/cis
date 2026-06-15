@@ -50,7 +50,7 @@ function setup() {
 
 
 
-base.set COMPOSITION "${1}" '^([a-zA-Z0-9][a-zA-Z0-9_-]*)?$' || exit 1
+base.set COMPOSITION "${1}" '^[a-zA-Z0-9][a-zA-Z0-9_-]*$' optional
 setup "${COMPOSITION}"
 
 

@@ -218,8 +218,8 @@ function ensureUsageOfDefinitions() {
 }
 
 # sanitizes all parameters
-base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
-base.set CURRENT_FULLFILE "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$'
+base.set CURRENT_FULLFILE "${2}" '^[-a-zA-Z0-9/:@._]*$'
 ensureUsageOfDefinitions \
     "${DEFINITIONS:?"Missing DEFINITIONS"}" \
     "${CURRENT_FULLFILE:?"Missing CURRENT_FULLFILE"}" \

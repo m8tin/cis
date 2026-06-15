@@ -290,7 +290,7 @@ function base.loadModule() {
 
 function base.log() {
     local _LOGLEVEL _LOGLEVEL_UPPER
-    base.set _LOGLEVEL "${1}" '^(error|warn|info|debug)$' || exit 1
+    base.set _LOGLEVEL "${1}" '^(error|warn|info|debug)$'
     _LOGLEVEL_UPPER="${_LOGLEVEL:?"base.log(): Missing valid first parameter LOGLEVEL"}"
     _LOGLEVEL_UPPER="${_LOGLEVEL_UPPER^^}"
     readonly _LOGLEVEL_UPPER

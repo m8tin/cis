@@ -37,7 +37,7 @@ function addNormalUser() {
 }
 
 # sanitizes all parameters
-base.set USER "${1}" '^[a-z][-a-z0-9_.]*$' || exit 1
+base.set USER "${1}" '^[a-z][-a-z0-9_.]*$'
 addNormalUser "${USER:?"Missing USER"}" \
     && exit 0
 

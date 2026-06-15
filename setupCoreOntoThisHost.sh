@@ -208,8 +208,8 @@ function setup() {
 
 
 
-# Parameter 1: is optional '()?' and only alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
-base.set DOMAIN "${1}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)?$' || exit 1
+# Parameter 1: only alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
+base.set DOMAIN "${1}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
 setup "${DOMAIN}" \
     && exit 0
 

@@ -223,8 +223,8 @@ function usage() {
 
 
 
-# Parameter 2: is optional '()?' and only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
-base.set COMPOSITION "${2}" '^([a-zA-Z0-9][a-zA-Z0-9_-]*)?$'
+# Parameter 2: only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
+base.set COMPOSITION "${2}" '^[a-zA-Z0-9][a-zA-Z0-9_-]*$' optional
 
 case "${1}" in
     --onceAll)

@@ -75,7 +75,7 @@ function checkSync() {
 }
 
 base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-base.set GIVEN_REMOTE_HOSTNAME_FQDN "${2}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)?$'
+base.set GIVEN_REMOTE_HOSTNAME_FQDN "${2}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
 base.set MODE "${3:-"normal"}" '^(debug|normal)$'
 
 RESULTS=$(checkSync "${REMOTE_HOST}" "${MODE}" "${GIVEN_REMOTE_HOSTNAME_FQDN}")

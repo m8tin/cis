@@ -29,6 +29,6 @@ function testDomain() {
 }
 
 # FQDN of server: e.g. host.example.net[:port]
-base.set REMOTE_HOST "${1}" '^(([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?)?$'
+base.set REMOTE_HOST "${1}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$' optional
 testDomain "${REMOTE_HOST}" && exit 0
 exit 1

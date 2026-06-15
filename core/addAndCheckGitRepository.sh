@@ -99,9 +99,9 @@ function addAndCheckGitRepository() {
 }
 
 # sanitizes all parameters
-base.set FOLDER "${1}" '^[-a-zA-Z0-9/:@._]*/$' || exit 1
-base.set RIGHTS "${2}" '^(readonly|writable)$' || exit 1
-base.set SUGGESTED_REPOSITORY "${3}" '^([-a-zA-Z0-9/:@._]*)?$' || exit 1
+base.set FOLDER "${1}" '^[-a-zA-Z0-9/:@._]*/$'
+base.set RIGHTS "${2}" '^(readonly|writable)$'
+base.set SUGGESTED_REPOSITORY "${3}" '^[-a-zA-Z0-9/:@._]*$' optional
 addAndCheckGitRepository \
     "${FOLDER:?"Missing FOLDER"}" \
     "${RIGHTS:?"Missing RIGHTS"}" \

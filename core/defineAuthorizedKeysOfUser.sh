@@ -136,8 +136,8 @@ function defineAuthorizedKeysOfUser() {
 }
 
 # sanitizes all parameters
-base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
-base.set USER "${2}" '^[-a-zA-Z0-9/:@._]*$' || exit 1
+base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$'
+base.set USER "${2}" '^[-a-zA-Z0-9/:@._]*$'
 defineAuthorizedKeysOfUser \
     "${DEFINITIONS:?"Missing DEFINITIONS"}" \
     "${USER:?"Missing USER"}" \
