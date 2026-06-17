@@ -438,7 +438,7 @@ function base.explain() {
         [ "${3}" == "${_FUNCTION}" ] \
             && echo "Then you can use the function '${_FUNCTION}()' as follows:" \
             && echo "----------------------------------------------------------------------------" \
-            && grep -B 10 -F "${_FUNCTION}()" "${_MODULE_PREFIX}.module.sh" | grep -E '^#.*' \
+            && grep -B 20 -F "${_FUNCTION}()" "${_MODULE_PREFIX}.module.sh" | grep -A 19 -E '^[[:blank:]]*$' | grep -oE '^#.*$' \
             && return 0
     done
 }
