@@ -54,31 +54,16 @@ function composition.printAll() {
 }
 
 function composition.printAllRunningOnThisHost() {
-    local _COMPOSITIONS _CURRENTHOST_FILE
-    _COMPOSITIONS="${CIS[COMPOSITIONS]:?"Missing CIS_COMPOSITIONS"}"
-    _CURRENTHOST_FILE="current-host"
-    readonly _COMPOSITIONS _CURRENTHOST_FILE
 
-    for _COMPOSITION_DIR in "${_COMPOSITIONS}"*; do
-
-        # Like basename
-        local _COMPOSITION="${_COMPOSITION_DIR##*/}"
-
+    composition.printAll | while read -r _COMPOSITION; do
         composition.isRunningOnThisHost "${_COMPOSITION}" \
             && echo "${_COMPOSITION}"
     done
 }
 
 function composition.printAllSyncedByThisHost() {
-    local _COMPOSITIONS
-    _COMPOSITIONS="${CIS[COMPOSITIONS]:?"Missing CIS_COMPOSITIONS"}"
-    readonly _COMPOSITIONS
 
-    for _COMPOSITION_DIR in "${_COMPOSITIONS}"*; do
-
-        # Like basename
-        local _COMPOSITION="${_COMPOSITION_DIR##*/}"
-
+    composition.printAll | while read -r _COMPOSITION; do
         composition.isSyncedByThisHost "${_COMPOSITION}" \
              && echo "${_COMPOSITION}"
     done
