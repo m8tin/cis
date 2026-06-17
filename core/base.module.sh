@@ -194,6 +194,7 @@ function prepare.setREGEX() {
     REGEX[COMMAND]='^([]a-zA-Z0-9[|/_:,." -]+)$'                 #WARNING: Escaping does not work properly here, so we need to position the special characters in a clever way.
     REGEX[COMPOSITION]='^[a-zA-Z]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$'
     REGEX[DOMAIN]='^([a-zA-Z][a-zA-Z0-9\.-]*)?[a-zA-Z]{2,}$'
+    REGEX[FULLDIRPATH]='^/([a-zA-Z0-9\._-]+/)*$'
     REGEX[SNAPSHOT]='^@[a-zA-Z]([a-zA-Z0-9\.:_-]*[a-zA-Z0-9])?$'
     REGEX[SYNCSNAPSHOT]='^@SYNC_[a-zA-Z0-9\.:_-]*[a-zA-Z0-9]$'
     REGEX[USER]='^[a-zA-Z]([-a-zA-Z0-9\._]*[a-zA-Z0-9])?$'
@@ -254,7 +255,7 @@ function base.filterComments() {
 function base.loadModule() {
     local _MODULENAME _MODULEFULLNAME
     _MODULENAME="${1:?"Function base.loadModule(): Missing parameter MODULENAME."}"
-    _MODULEFULLNAME="${CIS[MODULEROOT]:?"Function base.loadModule(): Missing CISMODULEDIR."}/${_MODULENAME}.module.sh"
+    _MODULEFULLNAME="${CIS[MODULEROOT]:?"Function base.loadModule(): Missing CIS_MODULEROOT."}${_MODULENAME}.module.sh"
     readonly _MODULENAME _MODULEFULLNAME
 
     #module already is loaded => return
