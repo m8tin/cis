@@ -3,6 +3,11 @@ source /cis/core/base.module.sh
 
 
 
+# composition.isRunningOnThisHost COMPOSITION
+#  - COMPOSITION mandatory: "uptime-kuma-prod"
+#
+# This function checks if the given composition runs or should run on this host.
+# Therefore a file 'current-host' defines the the current host where the composition runs.
 function composition.isRunningOnThisHost() {
     local _COMPOSITION _CURRENTHOST_FILE
     _COMPOSITION="${1:?"Missing first parameter COMPOSITION"}"
@@ -20,6 +25,12 @@ function composition.isRunningOnThisHost() {
     return 1
 }
 
+# composition.isSyncedByThisHost COMPOSITION
+#  - COMPOSITION mandatory: "uptime-kuma-prod"
+#
+# This function checks if the given composition is or should be synced to this host.
+# Therefore a file 'composition-sync-hosts' defines a list of host, one per line, where the composition should be synced to.
+# This host either runs the composition or syncs it.
 function composition.isSyncedByThisHost() {
     local _COMPOSITION _COMPOSITION_PATH _CURRENTHOST_FILE _SYNCHOSTS_FILE
     _COMPOSITION="${1:?"Missing first parameter COMPOSITION"}"
@@ -39,6 +50,9 @@ function composition.isSyncedByThisHost() {
     return 1
 }
 
+# composition.printAll
+#
+# This function prints a list of all compositions, one per line.
 function composition.printAll() {
     local _COMPOSITIONS
     _COMPOSITIONS="${CIS[COMPOSITIONS]:?"Missing CIS_COMPOSITIONS"}"
@@ -53,6 +67,10 @@ function composition.printAll() {
     done
 }
 
+# composition.printAllRunningOnThisHost
+#
+# This function prints a list of all compositions which run or should run on this host, one per line.
+#   see also: composition.isRunningOnThisHost
 function composition.printAllRunningOnThisHost() {
 
     composition.printAll | while read -r _COMPOSITION; do
@@ -61,6 +79,10 @@ function composition.printAllRunningOnThisHost() {
     done
 }
 
+# composition.printAllSyncedByThisHost
+#
+# This function prints a list of all compositions which should be synced to this host, one per line.
+#   see also: composition.isSyncedByThisHost
 function composition.printAllSyncedByThisHost() {
 
     composition.printAll | while read -r _COMPOSITION; do
@@ -69,6 +91,10 @@ function composition.printAllSyncedByThisHost() {
     done
 }
 
+# composition.start COMPOSITION
+#  - COMPOSITION mandatory: "uptime-kuma-prod"
+#
+# This function starts the given composition on this host, provided that this is the defined result.
 function composition.start() {
     local _COMPOSITION _COMPOSITION_FILE_BACKUP _COMPOSITION_HOME _COMPOSITION_HOME_FILE
     _COMPOSITION="${1:?"composition.start(): Missing first parameter COMPOSITION"}"
@@ -129,8 +155,7 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo '    #Loads this module'
     echo '    base.loadModule composition'
     echo
-    echo "Now you can use the functions provided by this module inside your script:"
-    echo "-------------------------------------------------------------------------"
-    declare -F | grep "composition." | cut -d" " -f3
+    base.explain 'composition' "${1}" "${2}"
+    echo
     exit 1
 fi

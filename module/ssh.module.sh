@@ -3,6 +3,12 @@ source /cis/core/base.module.sh
 
 
 
+# ssh.onHostRun remotehost command
+#  - remotehost mandatory: "[user@]host.example.net[:port]"
+#  - command    mandatory: "lsb_release -a | grep Description:"
+#
+# Runs the given command on the remote host via ssh. User and port are optional and the defaults are as expected.
+# There are limitations of characters which are allowed to build the command. So try to express the task in a simple way.
 function ssh.onHostRun() {
     local _REMOTE_HOST _COMMAND
     base.set _REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9@.-]*)+(:[0-9]+)?$'
@@ -61,8 +67,7 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo '    #Loads this module'
     echo '    base.loadModule ssh'
     echo
-    echo "Now you can use the functions provided by this module inside your script:"
-    echo "-------------------------------------------------------------------------"
-    declare -F | grep "ssh." | cut -d" " -f3
+    base.explain 'ssh' "${1}" "${2}"
+    echo
     exit 1
 fi

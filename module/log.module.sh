@@ -208,8 +208,7 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo '    #Loads this module'
     echo '    base.loadModule log'
     echo
-    echo "Now you can use the functions provided by this module inside your script:"
-    echo "-------------------------------------------------------------------------"
-    declare -F | grep "log." | cut -d" " -f3
+    base.explain 'log' "${1}" "${2}"
+    echo
     exit 1
 fi
