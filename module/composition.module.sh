@@ -91,7 +91,7 @@ function composition.start() {
     _COMPOSITION_HOME_FILE="${CIS[COMPOSITIONS]:?"Missing CIS_COMPOSITIONS"}${_COMPOSITION}/home"
 
     # The regex should ensure a path starts and ends with a '/' and it should limit the allowed set of characters
-    base.set _COMPOSITION_HOME "$(head -n 1 "${_COMPOSITION_HOME_FILE}" 2> /dev/null)" '^/([a-zA-Z0-9\._-]+/)*$' optional
+    base.set _COMPOSITION_HOME "$(head -n 1 "${_COMPOSITION_HOME_FILE}" 2> /dev/null)" "${REGEX[FULLDIRPATH]}" optional
     readonly _COMPOSITION _COMPOSITION_FILE_BACKUP _COMPOSITION_HOME _COMPOSITION_HOME_FILE
 
     local _COMPOSITION_FILE

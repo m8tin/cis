@@ -6,7 +6,7 @@ source /cis/core/base.module.sh
 function ssh.onHostRun() {
     local _REMOTE_HOST _COMMAND
     base.set _REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9@.-]*)+(:[0-9]+)?$'
-    base.set _COMMAND "${2:?"COMMAND missing"}" '[-a-zA-Z0-9\|/_:,.]+'
+    base.set _COMMAND "${2:?"COMMAND missing"}" "${REGEX[COMMAND]}"
 
     local _REMOTE_USER _REMOTE_HOSTNAME_FQDN _REMOTE_PORT _SOCKET
     _REMOTE_USER="@${_REMOTE_HOST}"                        #Ensures leading '@'
