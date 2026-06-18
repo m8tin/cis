@@ -191,14 +191,17 @@ function prepare.setREGEX() {
         && base.abort "Array REGEX was not initialized correctly."
 
     # set the values into the global array 'REGEX',
-    REGEX[COMMAND]='^([]a-zA-Z0-9[|/_:,." -]+)$'                 #WARNING: Escaping does not work properly here, so we need to position the special characters in a clever way.
-    REGEX[COMPOSITION]='^[a-zA-Z]([a-zA-Z0-9_-]*[a-zA-Z0-9])?$'
-    REGEX[DOMAIN]='^([a-zA-Z][a-zA-Z0-9\.-]*)?[a-zA-Z]{2,}$'
+    REGEX[COMMAND]='[]a-zA-Z0-9[|/_:,." -]+'                 #WARNING: Escaping does not work properly here, so we need to position the special characters in a clever way.
+    REGEX[COMPOSITION]='[a-zA-Z]([a-zA-Z0-9_-]*[a-zA-Z0-9])?'
     REGEX[DIRPATH]='/([a-zA-Z0-9._-]+/)*'
-    REGEX[SNAPSHOT]='^@[a-zA-Z]([a-zA-Z0-9\.:_-]*[a-zA-Z0-9])?$'
-    REGEX[SYNCSNAPSHOT]='^@SYNC_[a-zA-Z0-9\.:_-]*[a-zA-Z0-9]$'
-    REGEX[USER]='^[a-zA-Z]([-a-zA-Z0-9\._]*[a-zA-Z0-9])?$'
-    REGEX[ZFS]='^[a-zA-Z]([a-zA-Z0-9\/_-]*[a-zA-Z0-9])?$'
+    REGEX[HOST]='[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?'
+    REGEX[PORT]='[0-9]{1,5}'
+    REGEX[SNAPSHOT]='@[a-zA-Z]([a-zA-Z0-9.:_-]*[a-zA-Z0-9])?'
+    REGEX[SYNCSNAPSHOT]='@SYNC_[a-zA-Z0-9.:_-]*[a-zA-Z0-9]'
+    REGEX[USER]='[a-zA-Z]([a-zA-Z0-9._-]*[a-zA-Z0-9])?'
+    REGEX[ZFS]='[a-zA-Z]([a-zA-Z0-9/_-]*[a-zA-Z0-9])?'
+    # combined expressions:
+    REGEX[SSH_ADDRESS]="(${REGEX[USER]}@)?(${REGEX[HOST]})(:${REGEX[PORT]})?"
 
     # and define the array 'REGEX' as readonly.
     declare -A -g -r REGEX
@@ -411,7 +414,7 @@ function base.set() {
         && return 0
 
     # Sets the value to a global variable with name $_VARNAME
-    [[ "${_VALUE}" =~ $_REGEX ]] \
+    [[ "${_VALUE}" =~ ^(${_REGEX})$ ]] \
         && printf -v "${_CLEAN_VARNAME}" -- "%s" "${_VALUE}" \
         && readonly "${_CLEAN_VARNAME}" \
         && return 0
