@@ -130,14 +130,14 @@ function send() {
 # Parameter 3: Only alphanumeric characters allowed and [.-]   if not leading (due to: -oProxyCommand=...).
 # Parameter 4: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
 # Parameter 5: Only alphanumeric characters allowed and [._:-] if not leading (due to: -oProxyCommand=...), but can be empty.
-base.set RECEIVERHOST "${1}" '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
-base.set ZFS_BRANCH "${2}" '^[a-zA-Z][a-zA-Z0-9/_-]*[a-zA-Z0-9]$'
-base.set COMPOSITION "${3}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
-base.set RECEIVERS_SNAPSHOT "${4}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$' optional
+base.set RECEIVERHOST "${1}" "${REGEX[HOST]}"
+base.set ZFS_BRANCH "${2}" "${REGEX[ZFS]}"
+base.set COMPOSITION "${3}" "${REGEX[COMPOSITION]}"
+base.set RECEIVERS_SNAPSHOT "${4}" "${REGEX[SNAPSHOT]}" optional
 base.set RESUME_TOKEN "${5}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$' optional
 
 # Resume mode
-if [ "${RECEIVERS_SNAPSHOT}" == "RESUME" ]; then
+if [ "${RECEIVERS_SNAPSHOT}" == "@RESUME" ] && [ -n "${RESUME_TOKEN}" ]; then
     sendResume "${RESUME_TOKEN}"
 
     # Exit preserving the code

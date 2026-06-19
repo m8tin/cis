@@ -108,7 +108,7 @@ function receive() {
         _RESUME_TOKEN=$(zfs get -H -o value receive_resume_token "${_ZFS}" 2> /dev/null)
         if [ -n "${_RESUME_TOKEN}" ] && [ "${_RESUME_TOKEN}" != "-" ]; then
             echo "Resume token present trying to resume at ${_RESUME_TOKEN}"
-            _COMMON_SNAPSHOT="RESUME"
+            _COMMON_SNAPSHOT="@RESUME"
         else
             _RESUME_TOKEN=""
             _COMMON_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" 2> /dev/null | head -n 1)
@@ -118,13 +118,14 @@ function receive() {
         fi
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
-        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_ZFS_BRANCH}\" \"${_COMPOSITION}\" \"${_COMMON_SNAPSHOT#${_ZFS}@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
+        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_ZFS_BRANCH}\" \"${_COMPOSITION}\" \"@${_COMMON_SNAPSHOT#*@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
         if [ $? -ne 0 ]; then
             echo "Unable to receive stream using these settings:"
             echo "  - Sending host:     ${_SOURCEHOST}:${_SSH_PORT}"
             echo "  - Receiving host:   ${_RECEIVERHOST}"
+            echo "  - ZFS Branch:       ${_ZFS_BRANCH}"
             echo "  - Composition:      ${_COMPOSITION}"
-            echo "  - Offered snapshot: ${_ZFS}@${_COMMON_SNAPSHOT#${_ZFS}@}"
+            echo "  - Offered snapshot: @${_COMMON_SNAPSHOT#*@}"
             echo "  - Resume token:     ${_RESUME_TOKEN}"
             echo "Current state of snapshots:"
             zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
