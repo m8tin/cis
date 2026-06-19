@@ -160,7 +160,7 @@ function receiveLoopSingle() {
     _COMPOSITION="${1:?"receiveLoopSingle(): Missing first parameter COMPOSITION"}"
     readonly _COMPOSITION
 
-    while composition.isSyncedByThisHost "${_COMPOSITION}"; do
+    while composition.shouldBeSyncedByThisHost "${_COMPOSITION}"; do
         receive "${_COMPOSITION}" \
             && echo "Sleep for 5s" \
             && sleep 5 \
@@ -174,7 +174,7 @@ function receiveLoopSingle() {
         return 1
     done
 
-    ! composition.isSyncedByThisHost "${_COMPOSITION}" \
+    ! composition.shouldBeSyncedByThisHost "${_COMPOSITION}" \
         && echo "This host '${CIS[HOST]}' is no sync-host (anymore) for composition: '${_COMPOSITION}'"
 }
 
@@ -193,7 +193,7 @@ function receiveOnceSingle() {
     _COMPOSITION="${1:?"receiveOnceSingle(): Missing first parameter COMPOSITION"}"
     readonly _COMPOSITION
 
-    ! composition.isSyncedByThisHost "${_COMPOSITION}" \
+    ! composition.shouldBeSyncedByThisHost "${_COMPOSITION}" \
         && echo "This host '${CIS[HOST]}' is no sync-host for composition: '${_COMPOSITION}'" \
         && return 1
 
