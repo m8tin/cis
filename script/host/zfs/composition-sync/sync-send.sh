@@ -1,5 +1,6 @@
 #!/bin/bash
 source /cis/core/base.module.sh
+base.loadModule composition
 
 
 
@@ -135,6 +136,10 @@ base.set ZFS_BRANCH "${2}" "${REGEX[ZFS]}"
 base.set COMPOSITION "${3}" "${REGEX[COMPOSITION]}"
 base.set RECEIVERS_SNAPSHOT "${4}" "${REGEX[SNAPSHOT]}" optional
 base.set RESUME_TOKEN "${5}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$' optional
+
+! composition.shouldBeSyncedByGivenHost "${COMPOSITION}" "${RECEIVERHOST}" \
+    && echo "FAILURE: The host '${RECEIVERHOST}' is no sync-host for composition: '${COMPOSITION}'" >&2 \
+    && exit 1
 
 # Resume mode
 if [ "${RECEIVERS_SNAPSHOT}" == "@RESUME" ] && [ -n "${RESUME_TOKEN}" ]; then
