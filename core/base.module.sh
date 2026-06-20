@@ -211,35 +211,27 @@ function prepare.setREGEX() {
 function base.abort() {
     # Minimalmode in case of emergency
     [ "${COLOR[SET]:+isset}" != 'isset' ] \
-        && printf -- "\n%b\n" "Script aborted during preparation (State: '${CIS[SET]:-""}')!" >&2  \
-        && printf -- "  %b\n\n" "${@}" >&2 \
+        && printf -- "\n%s\n" "Script '${BASH_SOURCE[0]}' aborted during preparation (State: '${CIS[SET]:-""}')!" >&2  \
+        && printf -- "  %s\n\n" "${@}" >&2 \
         && exit 1
 
-    local _FULLSCRIPTNAME=$(realpath "${0}" 2> /dev/null)
-    local _SCRIPTNAME="${_FULLSCRIPTNAME##*/}"
-
     [ "${1:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nScript ${_SCRIPTNAME} aborted!\n\n" >&2 \
+        && base.printWithColor LIGHTRED "\nScript ${CIS[SCRIPTNAME]} aborted!\n\n" >&2 \
         && exit 1
 
     [ "${2:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nScript ${_SCRIPTNAME} aborted!\n" >&2 \
+        && base.printWithColor LIGHTRED "\nScript ${CIS[SCRIPTNAME]} aborted!\n" >&2 \
         && base.printWithColor WHITE "${1:?"Missing parameter MESSAGE."}\n\n" >&2 \
         && exit 1
 
-    [ "${3:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nScript ${_SCRIPTNAME} aborted!\n" >&2 \
-        && base.printWithColor WHITE "${1:?"Missing parameter MESSAGE."}\n\n" >&2 \
-        && base.printWithColor CYAN "TIP: ${2:?"Missing parameter TIP."}\n" >&2 \
-        && exit 1
-
-    base.printWithColor LIGHTRED "\nScript ${_SCRIPTNAME} aborted!\n" >&2
-    base.printWithColor WHITE "${1:?"Missing parameter MESSAGE."}\n\n" >&2
-    base.printWithColor CYAN "TIP - ${2:?"Missing parameter TIP."}:\n" >&2
-    while shift; do
-        [ -z "${2:-""}" ] && break
-        base.printWithColor LIGHTGREY "  ${2}\n" >&2
+    base.printWithColor LIGHTRED "\nScript ${CIS[SCRIPTNAME]} aborted!\n" >&2
+    base.printWithColor WHITE "${1:?"Missing parameter MESSAGE."}\n" >&2
+    base.printWithColor CYAN "TIP: ${2:?"Missing parameter TIP."}:\n" >&2
+    while [ -n "${3}" ]; do
+        base.printWithColor LIGHTGREY "  ${3:-""}\n" >&2
+        shift
     done
+    echo >&2
     exit 1
 }
 

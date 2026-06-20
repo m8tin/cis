@@ -1,6 +1,7 @@
 #!/bin/bash
 source /cis/core/base.module.sh
 base.loadModule composition
+base.loadModule print
 
 
 
@@ -138,8 +139,7 @@ base.set RECEIVERS_SNAPSHOT "${4}" "${REGEX[SNAPSHOT]}" optional
 base.set RESUME_TOKEN "${5}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$' optional
 
 ! composition.shouldBeSyncedByGivenHost "${COMPOSITION}" "${RECEIVERHOST}" \
-    && echo "FAILURE: The host '${RECEIVERHOST}' is no sync-host for composition: '${COMPOSITION}'" >&2 \
-    && exit 1
+    && base.abort "The host '${RECEIVERHOST}' is no sync-host for composition: '${COMPOSITION}'"
 
 # Resume mode
 if [ "${RECEIVERS_SNAPSHOT}" == "@RESUME" ] && [ -n "${RESUME_TOKEN}" ]; then
@@ -152,5 +152,5 @@ fi
 send "${ZFS_BRANCH}" "${COMPOSITION}" "${RECEIVERHOST}" "${RECEIVERS_SNAPSHOT}" \
     && exit 0
 
-echo "Failure in sync-send.sh: Something unexpected happend." >&2
+print.failure "Something unexpected happend."
 exit 1

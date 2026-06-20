@@ -1,6 +1,7 @@
 #!/bin/bash
 source /cis/core/base.module.sh
 base.loadModule composition
+base.loadModule print
 
 
 
@@ -38,9 +39,9 @@ function removeForeignSyncSnapshots() {
     readonly _RECEIVERHOST _ZFS
 
     zfs list -t snapshot -H -o name "${_ZFS}" | grep -- "${_ZFS}@SYNC" | grep -v -i "@SYNC_${_RECEIVERHOST}_" | while read _SNAP; do
-    echo -n "Removing foreign snapshot:  ${_SNAP} ... " \
+    print.data "Removing foreign snapshot:  ${_SNAP} ... " \
         && destroySyncSnapshot "${_ZFS}" "${_SNAP}" \
-        && echo "done"
+        && print.good "done\n"
     done
 
     return 0
@@ -58,9 +59,9 @@ function removeOutdatedSyncSnapshots() {
 
     # Remove all but the newest snapshot, which is the common snapshot in the next run
     zfs list -t snapshot -H -o name "${_ZFS}" | grep -- "${_ZFS}@SYNC_${_RECEIVERHOST}_" | grep -v -i "${_NEWEST_SNAPSHOT}" | while read _SNAP; do
-    echo -n "Removing outdated snapshot: ${_SNAP} ... " \
+    print.data "Removing outdated snapshot: ${_SNAP} ... " \
         && destroySyncSnapshot "${_ZFS}" "${_SNAP}" \
-        && echo "done"
+        && print.good "done\n"
     done
 
     return 0
@@ -80,7 +81,7 @@ function tryRollbackToRepair() {
     [ -z "${_ROLLBACK_SNAPSHOT}" ] && return 1
 
     # Remove at most the two newest sync snapshots, if the day matches with the rollback file
-    echo "Try to fix by removing: '${_ROLLBACK_SNAPSHOT}'" \
+    print highlight "Try to fix by removing: '${_ROLLBACK_SNAPSHOT}'\n" \
         && zfs destroy "${_ROLLBACK_SNAPSHOT:?"tryRollbackToRepair(): Missing _ROLLBACK_SNAPSHOT"}" \
         && return 0
 
@@ -107,27 +108,29 @@ function receive() {
         _COMMON_SNAPSHOT=""
         _RESUME_TOKEN=$(zfs get -H -o value receive_resume_token "${_ZFS}" 2> /dev/null)
         if [ -n "${_RESUME_TOKEN}" ] && [ "${_RESUME_TOKEN}" != "-" ]; then
-            echo "Resume token present trying to resume at ${_RESUME_TOKEN}"
+            print.important "Resume token present trying to resume at ${_RESUME_TOKEN}\n"
             _COMMON_SNAPSHOT="@RESUME"
         else
             _RESUME_TOKEN=""
             _COMMON_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" 2> /dev/null | head -n 1)
             ! [ -z "${_COMMON_SNAPSHOT}" ] \
-                && echo "Rolling back to newest snapshot: ${_COMMON_SNAPSHOT}" \
-                && zfs rollback -r "${_COMMON_SNAPSHOT}"
+                && print.data "Rolling back to newest snapshot: ${_COMMON_SNAPSHOT} ... " \
+                && zfs rollback -r "${_COMMON_SNAPSHOT}" \
+                && print.good "done\n"
         fi
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
         ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_ZFS_BRANCH}\" \"${_COMPOSITION}\" \"@${_COMMON_SNAPSHOT#*@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
         if [ $? -ne 0 ]; then
-            echo "Unable to receive stream using these settings:"
-            echo "  - Sending host:     ${_SOURCEHOST}:${_SSH_PORT}"
-            echo "  - Receiving host:   ${_RECEIVERHOST}"
-            echo "  - ZFS Branch:       ${_ZFS_BRANCH}"
-            echo "  - Composition:      ${_COMPOSITION}"
-            echo "  - Offered snapshot: @${_COMMON_SNAPSHOT#*@}"
-            echo "  - Resume token:     ${_RESUME_TOKEN}"
-            echo "Current state of snapshots:"
+            print.failure "Unable to receive stream" \
+            "These settings were used" \
+            "- Sending host:     ${_SOURCEHOST}:${_SSH_PORT}" \
+            "- Receiving host:   ${_RECEIVERHOST}" \
+            "- ZFS Branch:       ${_ZFS_BRANCH}" \
+            "- Composition:      ${_COMPOSITION}" \
+            "- Offered snapshot: @${_COMMON_SNAPSHOT#*@}" \
+            "- Resume token:     ${_RESUME_TOKEN}"
+            print.highlight "Current state of snapshots:\n"
             zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
             tryRollbackToRepair "${_COMPOSITION}" "${_ZFS}" && return 0
             return 1
@@ -151,7 +154,7 @@ function receiveLoopAll() {
 
     composition.printAllSyncedByThisHost | while read -r _COMPOSITION; do
         ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
-            && echo "Starting screen sync session of composition: ${_COMPOSITION}" \
+            && print.highlight "Starting screen sync session of composition: ${_COMPOSITION}\n" \
             && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loopSingle "${_COMPOSITION}"
     done
 }
@@ -163,20 +166,18 @@ function receiveLoopSingle() {
 
     while composition.shouldBeSyncedByGivenHost "${_COMPOSITION}" "${CIS[HOST]}"; do
         receive "${_COMPOSITION}" \
-            && echo "Sleep for 5s" \
+            && print.info "Sleep for 5s\n" \
             && sleep 5 \
-            && echo \
             && continue
 
         # If there is a screen session this keeps it alive in case of an error for debugging
-        echo
-        echo "Waiting 5min then ABORT!"
+        print.info "Waiting 5min then ABORT!\n"
         sleep 300
         return 1
     done
 
     ! composition.shouldBeSyncedByGivenHost "${_COMPOSITION}" "${CIS[HOST]}" \
-        && echo "This host '${CIS[HOST]}' is no sync-host (anymore) for composition: '${_COMPOSITION}'"
+        && print.important "This host '${CIS[HOST]}' is no sync-host (anymore) for composition: '${_COMPOSITION}'\n"
 }
 
 function receiveOnceAll() {
@@ -195,7 +196,7 @@ function receiveOnceSingle() {
     readonly _COMPOSITION
 
     ! composition.shouldBeSyncedByGivenHost "${_COMPOSITION}" "${CIS[HOST]}" \
-        && echo "This host '${CIS[HOST]}' is no sync-host for composition: '${_COMPOSITION}'" \
+        && print.failure "This host '${CIS[HOST]}' is no sync-host for composition: '${_COMPOSITION}'" \
         && return 1
 
     receive "${_COMPOSITION}" \

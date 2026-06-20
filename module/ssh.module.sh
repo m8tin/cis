@@ -1,5 +1,6 @@
 #!/bin/bash
 source /cis/core/base.module.sh
+base.loadModule print
 
 
 
@@ -41,7 +42,7 @@ function ssh.onHostRun() {
             -f ${_REMOTE_USER}@${_REMOTE_HOSTNAME_FQDN} exit &> /dev/null \
             && return 0
 
-        base.abort "FAILURE: Establishing SSH connection" "Is the setup ok?"
+        print.failure "Establishing SSH connection" "Is the setup ok?"
         return 1
     }
 

@@ -4,8 +4,8 @@ source /cis/core/base.module.sh
 
 
 #Function, to highlight bad messages.
-function log.bad() {
-    local _MESSAGE="${@:?"log.bad(): Missing first parameter MESSAGE."}"
+function print.bad() {
+    local _MESSAGE="${@:?"print.bad(): Missing first parameter MESSAGE."}"
 
     base.printWithColor LIGHTRED "${_MESSAGE}" >&2 \
         && return 0
@@ -14,17 +14,17 @@ function log.bad() {
 }
 
 #Function, for data.
-function log.data() {
-    local _MESSAGE="${@:?"log.data(): Missing first parameter MESSAGE."}"
+function print.data() {
+    local _MESSAGE="${@:?"print.data(): Missing first parameter MESSAGE."}"
 
-    base.printWithColor LIGHTGREY "${_MESSAGE}" >&2 \
+    base.printWithColor DARKGREY "${_MESSAGE}" >&2 \
         && return 0
 
     return 1
 }
 
 #Function, for uncorrectable errors.
-function log.error() {
+function print.error() {
     local _MESSAGE="${@:-""}"
 
     [ -z "${_MESSAGE:-""}" ] \
@@ -39,8 +39,8 @@ function log.error() {
 }
 
 #Function, for very important information.
-function log.essential() {
-    local _MESSAGE="${@:?"log.essential(): Missing first parameter MESSAGE."}"
+function print.essential() {
+    local _MESSAGE="${@:?"print.essential(): Missing first parameter MESSAGE."}"
 
     base.printWithColor LIGHTRED "${_MESSAGE}" >&2 \
         && return 0
@@ -49,23 +49,33 @@ function log.essential() {
 }
 
 #Function, for failures.
-function log.failure() {
-    local _MESSAGE="${@:-""}"
-
-    [ -z "${_MESSAGE:-""}" ] \
-        && base.printWithColor LIGHTRED "FAILURE!\n" >&2 \
+function print.failure() {
+    [ "${1:+isset}" != "isset" ] \
+        && base.printWithColor LIGHTRED "\nFAILURE:" >&2 \
+        && base.printWithColor WHITE " ${CIS[SCRIPTNAME]}\n\n" >&2 \
         && return 0
 
-    base.printWithColor LIGHTRED "FAILURE!\n" >&2 \
-        && base.printWithColor WHITE "  ${_MESSAGE}\n" >&2 \
+    [ "${2:+isset}" != "isset" ] \
+        && base.printWithColor LIGHTRED "\nFAILURE:" >&2 \
+        && base.printWithColor WHITE " ${CIS[SCRIPTNAME]}\n" >&2 \
+        && base.printWithColor WHITE "  ${1:?"Missing parameter MESSAGE."}\n\n" >&2 \
         && return 0
 
-    return 1
+    base.printWithColor LIGHTRED "\nFAILURE:" >&2
+    base.printWithColor WHITE " ${CIS[SCRIPTNAME]}\n" >&2
+    base.printWithColor WHITE "  ${1:?"Missing parameter MESSAGE."}\n" >&2
+    base.printWithColor CYAN "TIP: ${2:?"Missing parameter TIP."}:\n" >&2
+    while [ -n "${3}" ]; do
+        base.printWithColor LIGHTGREY "  ${3:-""}\n" >&2
+        shift
+    done
+    echo >&2
+    return 0
 }
 
 #Function, to finish a script.
-function log.finish() {
-    local _SCRIPTNAME="${CIS[SCRIPTNAME]:?"log.finish(): Missing CIS[SCRIPTNAME]."}"
+function print.finish() {
+    local _SCRIPTNAME="${CIS[SCRIPTNAME]:?"print.finish(): Missing CIS[SCRIPTNAME]."}"
 
     base.printWithColor WHITE "\nScript ${_SCRIPTNAME}: " >&2 \
         && base.printWithColor LIGHTGREEN "successful!\n\n" >&2 \
@@ -75,8 +85,8 @@ function log.finish() {
 }
 
 #Function, to highlight good messages.
-function log.good() {
-    local _MESSAGE="${@:?"log.good(): Missing first parameter MESSAGE."}"
+function print.good() {
+    local _MESSAGE="${@:?"print.good(): Missing first parameter MESSAGE."}"
 
     base.printWithColor LIGHTGREEN "${_MESSAGE}" >&2 \
         && return 0
@@ -84,9 +94,19 @@ function log.good() {
     return 1
 }
 
+#Function, for highlighted messages.
+function print.highlight() {
+    local _MESSAGE="${@:?"print.highlight(): Missing first parameter MESSAGE."}"
+
+    base.printWithColor WHITE "${_MESSAGE}" >&2 \
+        && return 0
+
+    return 1
+}
+
 #Function, for important information.
-function log.important() {
-    local _MESSAGE="${@:?"log.important(): Missing first parameter MESSAGE."}"
+function print.important() {
+    local _MESSAGE="${@:?"print.important(): Missing first parameter MESSAGE."}"
 
     base.printWithColor YELLOW "${_MESSAGE}" >&2 \
         && return 0
@@ -95,8 +115,8 @@ function log.important() {
 }
 
 #Function, for normal information.
-function log.info(){
-    local _MESSAGE="${1:?"log.info(): Missing first parameter MESSAGE."}"
+function print.info() {
+    local _MESSAGE="${1:?"print.info(): Missing first parameter MESSAGE."}"
     shift
     local _DECRIPTION="${@:-""}"
 
@@ -113,19 +133,19 @@ function log.info(){
     return 1
 }
 
-#Function, for highlighted messages.
-function log.message(){
-    local _MESSAGE="${@:?"log.message(): Missing first parameter MESSAGE."}"
+#Function, for normal messages.
+function print.message() {
+    local _MESSAGE="${@:?"print.message(): Missing first parameter MESSAGE."}"
 
-    base.printWithColor WHITE "${_MESSAGE}" >&2 \
+    base.printWithColor LIGHTGREY "${_MESSAGE}" >&2 \
         && return 0
 
     return 1
 }
 
 #Function, for additional information.
-function log.optional(){
-    local _MESSAGE="${@:?"log.optional(): Missing first parameter MESSAGE."}"
+function print.optional() {
+    local _MESSAGE="${@:?"print.optional(): Missing first parameter MESSAGE."}"
 
     base.printWithColor LIGHTBLUE "${_MESSAGE}" >&2 \
         && return 0
@@ -134,10 +154,10 @@ function log.optional(){
 }
 
 #Function, to start a script.
-function log.start(){
+function print.start() {
     local _MESSAGE="${@:-""}"
-    local _SERVICE="$(echo "${_SCRIPTDIR##${CIS[ROOT]:?"log.start(): Missing CIS[ROOT]"}/}" | tr '[:lower:]' '[:upper:]')"
-    local _COMMAND="${CIS[SCRIPTNAME]:?"log.start(): Missing CIS[SCRIPTNAME]."}"
+    local _SERVICE="$(echo "${_SCRIPTDIR##${CIS[ROOT]:?"print.start(): Missing CIS[ROOT]"}/}" | tr '[:lower:]' '[:upper:]')"
+    local _COMMAND="${CIS[SCRIPTNAME]:?"print.start(): Missing CIS[SCRIPTNAME]."}"
 
     [ -z "${_MESSAGE:-""}" ] \
         && base.printWithColor YELLOW "${_SERVICE} ${_COMMAND}:\n\n" >&2 \
@@ -151,7 +171,7 @@ function log.start(){
 }
 
 #Function, for successful messages.
-function log.success(){
+function print.success() {
     local _MESSAGE="${@:-""}"
 
     [ -z "${_MESSAGE:-""}" ] \
@@ -166,8 +186,8 @@ function log.success(){
 }
 
 #Function, for tips.
-function log.tip(){
-    local _MESSAGE="${1:?"log.tip(): Missing first parameter MESSAGE."}"
+function print.tip() {
+    local _MESSAGE="${1:?"print.tip(): Missing first parameter MESSAGE."}"
 
     base.printWithColor CYAN "TIP:\n" >&2
     while [ "${_MESSAGE:-""}" != "" ]; do
@@ -182,8 +202,8 @@ function log.tip(){
 }
 
 #Function, for warnings.
-function log.warn(){
-    local _MESSAGE="${@:?"log.warn(): Missing first parameter MESSAGE."}"
+function print.warn() {
+    local _MESSAGE="${@:?"print.warn(): Missing first parameter MESSAGE."}"
 
     base.printWithColor YELLOW "WARNING:\n" >&2 \
         && base.printWithColor WHITE "  ${_MESSAGE}\n" >&2 \
@@ -197,7 +217,7 @@ function log.warn(){
 # Check if this module was started correctly using source
 if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     # Script was executed directly
-    echo "FAILURE: you are using this module 'log.module.sh' in a wrong way."
+    echo "FAILURE: you are using this module 'print.module.sh' in a wrong way."
     echo "    It is intended as a utility library and should not be called directly."
     echo
     echo "Usage: Call this module at the beginning of your script e.g. like this:"
@@ -206,9 +226,9 @@ if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     echo '    source /cis/core/base.module.sh'
     echo
     echo '    #Loads this module'
-    echo '    base.loadModule log'
+    echo '    base.loadModule print'
     echo
-    base.explain 'log' "${1}" "${2}"
+    base.explain 'print' "${1}" "${2}"
     echo
     exit 1
 fi
