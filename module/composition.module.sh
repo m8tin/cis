@@ -1,5 +1,6 @@
 #!/bin/bash
 source /cis/core/base.module.sh
+base.loadModule print
 
 
 
@@ -44,6 +45,32 @@ function composition.printAllSyncedByThisHost() {
     done
 }
 
+# composition.printZFS
+#  - COMPOSITION mandatory: "uptime-kuma-prod"
+#
+# This function prints zhe matching ZFS of zje given composition which stores the data or is synced.
+function composition.printZFS() {
+    local _COMPOSITION _ZFS_BRANCH _ZFS _ZFS_VERIFIED
+    _COMPOSITION="${1:?"composition.printZfsOfComposition(): Missing first parameter COMPOSITION"}"
+    _ZFS_BRANCH="$(cat "${CIS[COMPOSITIONS]}${_COMPOSITION}/zfs-branch" 2> /dev/null)"
+    _ZFS_BRANCH="${_ZFS_BRANCH%/}"        #Remove tailing '/' if exists
+    _ZFS="${_ZFS_BRANCH:-"zpool1/persistent"}/${_COMPOSITION}"
+    readonly _COMPOSITION _ZFS_BRANCH _ZFS
+
+    if composition.shouldRunOnThisHost "${_COMPOSITION}"; then
+        _ZFS_VERIFIED="$(zfs list -H -o name "${_ZFS}" 2> /dev/null)"
+    else
+        _ZFS_VERIFIED="$(zfs list -H -o name "${_ZFS}-BACKUP" 2> /dev/null)"
+    fi
+
+    [ -n "${_ZFS_VERIFIED}" ] \
+        && echo "${_ZFS_VERIFIED}" \
+        && return 0
+
+    print.failure "ZFS not found:" "${_ZFS}"
+    return 1
+}
+
 # composition.shouldRunOnThisHost COMPOSITION
 #  - COMPOSITION mandatory: "uptime-kuma-prod"
 #
@@ -56,7 +83,7 @@ function composition.shouldRunOnThisHost() {
     readonly _COMPOSITION _CURRENTHOST_FILE
 
     ! [ -f "${_CURRENTHOST_FILE}" ] \
-         && echo "FAILURE: Missing file current-host for composition: '${_COMPOSITION}'" >&2 \
+         && print.failure "Missing file current-host for composition: '${_COMPOSITION}'" \
          && return 1
 
     [ -n "${CIS[HOST]}" ] \
@@ -111,11 +138,11 @@ function composition.start() {
         && return 0
 
     [ -z "${_COMPOSITION_HOME}" ] \
-        && echo "FAILURE: there was no file 'home' defined." >&2 \
+        && print.failure "There was no file 'home' defined." \
         && return 1
 
     [ ! -f "${_COMPOSITION_FILE}" ] \
-        && echo "FAILURE: No composition file found: '${_COMPOSITION_FILE}'" >&2 \
+        && print.failure "No composition file found: '${_COMPOSITION_FILE}'" \
         && return 1
 
     printf -- "Starting composition: '%s'\n" "${_COMPOSITION}" >&2
@@ -130,8 +157,8 @@ function composition.start() {
             && return 0
     fi
 
-    echo "FAILURE: Missing command: 'docker compose'" >&2
-    echo "  (maybe you have to install it via: 'apt install docker-compose-v2')" >&2
+    print.failure "Missing command: 'docker compose'" \
+        "(maybe you have to install it via: 'apt install docker-compose-v2')"
     return 1
 }
 
