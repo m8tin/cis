@@ -23,6 +23,14 @@ function print.data() {
     return 1
 }
 
+#Function, to print done status.
+function print.done() {
+    base.printWithColor LIGHTGREEN "(done)\n" >&2 \
+        && return 0
+
+    return 1
+}
+
 #Function, for uncorrectable errors.
 function print.error() {
     local _MESSAGE="${@:-""}"
@@ -31,8 +39,8 @@ function print.error() {
         && base.printWithColor LIGHTRED "ERROR!\n" >&2 \
         && return 0
 
-    base.printWithColor LIGHTRED "ERROR!\n" >&2 \
-        && base.printWithColor WHITE "  ${_MESSAGE}\n" >&2 \
+    base.printWithColor LIGHTRED "ERROR:" >&2 \
+        && base.printWithColor WHITE " ${_MESSAGE}\n" >&2 \
         && return 0
 
     return 1
@@ -43,6 +51,14 @@ function print.essential() {
     local _MESSAGE="${@:?"print.essential(): Missing first parameter MESSAGE."}"
 
     base.printWithColor LIGHTRED "${_MESSAGE}" >&2 \
+        && return 0
+
+    return 1
+}
+
+#Function, to print fail status.
+function print.fail() {
+    base.printWithColor LIGHTRED "(FAIL)\n" >&2 \
         && return 0
 
     return 1
@@ -121,12 +137,12 @@ function print.info() {
     local _DECRIPTION="${@:-""}"
 
     [ -z "${_DECRIPTION:-""}" ] \
-        && base.printWithColor LIGHTBLUE "INFO:\n" >&2 \
-        && base.printWithColor WHITE "  ${_MESSAGE}\n" >&2 \
+        && base.printWithColor LIGHTBLUE "INFO:" >&2 \
+        && base.printWithColor WHITE " ${_MESSAGE}\n" >&2 \
         && return 0
 
-    base.printWithColor LIGHTBLUE "INFO - " >&2 \
-        && base.printWithColor WHITE "${_MESSAGE}:\n" >&2 \
+    base.printWithColor LIGHTBLUE "INFO:" >&2 \
+        && base.printWithColor WHITE " ${_MESSAGE}:\n" >&2 \
         && base.printWithColor LIGHTGREY "${_DECRIPTION}\n" >&2 \
         && return 0
 
@@ -178,8 +194,8 @@ function print.success() {
         && base.printWithColor LIGHTGREEN "SUCCESS!\n" >&2 \
         && return 0
 
-    base.printWithColor LIGHTGREEN "SUCCESS!\n" >&2 \
-        && base.printWithColor WHITE "  ${_MESSAGE}\n" >&2 \
+    base.printWithColor LIGHTGREEN "SUCCESS:" >&2 \
+        && base.printWithColor WHITE " ${_MESSAGE}\n" >&2 \
         && return 0
 
     return 1
@@ -189,11 +205,11 @@ function print.success() {
 function print.tip() {
     local _MESSAGE="${1:?"print.tip(): Missing first parameter MESSAGE."}"
 
-    base.printWithColor CYAN "TIP:\n" >&2
-    while [ "${_MESSAGE:-""}" != "" ]; do
-        base.printWithColor LIGHTGREY "  ${_MESSAGE}\n" >&2 \
+    base.printWithColor CYAN "TIP:" >&2 \
+        && base.printWithColor WHITE " ${_MESSAGE}\n" >&2
+    while [ -n "${2}" ]; do
+        base.printWithColor LIGHTGREY "  ${2}\n" >&2 \
             && shift \
-            && _MESSAGE="${1:-""}" \
             && continue
         return 1
     done
@@ -205,8 +221,8 @@ function print.tip() {
 function print.warn() {
     local _MESSAGE="${@:?"print.warn(): Missing first parameter MESSAGE."}"
 
-    base.printWithColor YELLOW "WARNING:\n" >&2 \
-        && base.printWithColor WHITE "  ${_MESSAGE}\n" >&2 \
+    base.printWithColor YELLOW "WARNING:" >&2 \
+        && base.printWithColor WHITE " ${_MESSAGE}\n" >&2 \
         && return 0
 
     return 1
