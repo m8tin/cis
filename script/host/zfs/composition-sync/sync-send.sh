@@ -139,7 +139,8 @@ base.set RECEIVERS_SNAPSHOT "${4}" "${REGEX[SNAPSHOT]}" optional
 base.set RESUME_TOKEN "${5}" '^[a-zA-Z0-9][a-zA-Z0-9._:-]*$' optional
 
 ! composition.shouldBeSyncedByGivenHost "${COMPOSITION}" "${RECEIVERHOST}" \
-    && base.abort "The host '${RECEIVERHOST}' is no sync-host for composition: '${COMPOSITION}'"
+    && base.abort "no sync-host available" \
+        "Host '${RECEIVERHOST}' is no sync-host for composition: '${COMPOSITION}'"
 
 # Resume mode
 if [ "${RECEIVERS_SNAPSHOT}" == "@RESUME" ] && [ -n "${RESUME_TOKEN}" ]; then

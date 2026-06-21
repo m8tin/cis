@@ -67,25 +67,25 @@ function print.fail() {
 #Function, for failures.
 function print.failure() {
     [ "${1:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nFAILURE:" >&2 \
-        && base.printWithColor WHITE " ${CIS[SCRIPTNAME]}\n\n" >&2 \
+        && base.printWithColor LIGHTRED "FAILURE (" >&2 \
+        && base.printWithColor WHITE " ${CIS[SCRIPTNAME]}" >&2 \
+        && base.printWithColor LIGHTRED ")!\n" >&2 \
         && return 0
 
     [ "${2:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nFAILURE:" >&2 \
-        && base.printWithColor WHITE " ${CIS[SCRIPTNAME]}\n" >&2 \
-        && base.printWithColor WHITE "  ${1:?"Missing parameter MESSAGE."}\n\n" >&2 \
+        && base.printWithColor LIGHTRED "FAILURE (" >&2 \
+        && base.printWithColor WHITE "${CIS[SCRIPTNAME]}" >&2 \
+        && base.printWithColor LIGHTRED "): ${1:?"Missing parameter MESSAGE."}\n" >&2 \
         && return 0
 
-    base.printWithColor LIGHTRED "\nFAILURE:" >&2
-    base.printWithColor WHITE " ${CIS[SCRIPTNAME]}\n" >&2
-    base.printWithColor WHITE "  ${1:?"Missing parameter MESSAGE."}\n" >&2
-    base.printWithColor CYAN "TIP: ${2:?"Missing parameter TIP."}:\n" >&2
+    base.printWithColor LIGHTRED "FAILURE (" >&2
+    base.printWithColor WHITE "${CIS[SCRIPTNAME]}" >&2
+    base.printWithColor LIGHTRED "): ${1:?"Missing parameter MESSAGE."}\n" >&2
+    base.printWithColor CYAN "TIP: ${2:?"Missing parameter TIP."}\n" >&2
     while [ -n "${3}" ]; do
         base.printWithColor LIGHTGREY "  ${3:-""}\n" >&2
         shift
     done
-    echo >&2
     return 0
 }
 

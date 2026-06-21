@@ -216,17 +216,21 @@ function base.abort() {
         && exit 1
 
     [ "${1:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nScript ${CIS[SCRIPTNAME]} aborted!\n\n" >&2 \
+        && base.printWithColor LIGHTRED "\nABORT (" >&2 \
+        && base.printWithColor WHITE " ${CIS[SCRIPTNAME]}" >&2 \
+        && base.printWithColor LIGHTRED ")!\n\n" >&2 \
         && exit 1
 
     [ "${2:+isset}" != "isset" ] \
-        && base.printWithColor LIGHTRED "\nScript ${CIS[SCRIPTNAME]} aborted!\n" >&2 \
-        && base.printWithColor WHITE "${1:?"Missing parameter MESSAGE."}\n\n" >&2 \
+        && base.printWithColor LIGHTRED "\nABORT (" >&2 \
+        && base.printWithColor WHITE "${CIS[SCRIPTNAME]}" >&2 \
+        && base.printWithColor LIGHTRED "): ${1:?"Missing parameter MESSAGE."}\n\n" >&2 \
         && exit 1
 
-    base.printWithColor LIGHTRED "\nScript ${CIS[SCRIPTNAME]} aborted!\n" >&2
-    base.printWithColor WHITE "${1:?"Missing parameter MESSAGE."}\n" >&2
-    base.printWithColor CYAN "TIP: ${2:?"Missing parameter TIP."}:\n" >&2
+    base.printWithColor LIGHTRED "\nABORT (" >&2
+    base.printWithColor WHITE "${CIS[SCRIPTNAME]}" >&2
+    base.printWithColor LIGHTRED "): ${1:?"Missing parameter MESSAGE."}\n" >&2
+    base.printWithColor YELLOW "Reason: ${2:?"Missing parameter REASON."}\n" >&2
     while [ -n "${3}" ]; do
         base.printWithColor LIGHTGREY "  ${3:-""}\n" >&2
         shift
@@ -460,7 +464,7 @@ elif [ "${CIS[SET]}" == "ready" ]; then
     base.abort "Module '${BASH_SOURCE[0]}' already loaded."
 else
     # If not exists, define a global array 'COLOR'
-    trap "base.abort '  User-initiated termination.'" INT \
+    trap "base.abort 'User-initiated termination.'" INT \
         && declare -A -g COLOR=([SET]=unprepared) \
         && prepare.setCOLOR \
         && prepare.setPATH "/bin/grep" \
