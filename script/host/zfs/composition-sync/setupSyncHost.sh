@@ -10,10 +10,9 @@ base.loadModule composition
 
 
 function setup() {
-    local _COMPOSITION _COMPOSITIONS_FOLDER _SYNC_HOSTS_FILE
+    local _COMPOSITION _COMPOSITIONS_FOLDER
     _COMPOSITION="${1}"
     _COMPOSITIONS_FOLDER="${CIS[DOMAINDEFINITIONS]}compositions/"
-    _SYNC_HOSTS_FILE="${_COMPOSITIONS_FOLDER}${_COMPOSITION}/composition-sync-hosts"
     readonly _COMPOSITION _COMPOSITIONS_FOLDER
 
     echo "Setup the host that receives the composition of others ..."
@@ -21,7 +20,7 @@ function setup() {
     echo "No folder for your defined composition settings found: ${_COMPOSITIONS_FOLDER}"
     echo "Please create it and add your custom composition settings in there, following this convention:"
     echo "  1.) './NAME_OF_THE_COMPOSITION/running-host'            containing one line with the FQDN of the host running the composition."
-    echo "  2.) './NAME_OF_THE_COMPOSITION/composition-sync-hosts'  containing a list of hosts receiving the composition, one host with its FQDN per line."
+    echo "  2.) './NAME_OF_THE_COMPOSITION/zfssync-hosts'  containing a list of hosts receiving the composition, one host with its FQDN per line."
     echo
 
     [ -d "${_COMPOSITIONS_FOLDER}" ] \
@@ -34,9 +33,8 @@ function setup() {
         && echo
 
     [ -n "${_COMPOSITION}" ] \
-        && [ -f "${_SYNC_HOSTS_FILE}" ] \
         && echo "Following hosts should sync the ZFS of this composition '${COMPOSITION}':" \
-        && cat "${_SYNC_HOSTS_FILE}" \
+        && composition.printAllSyncingHosts "${_COMPOSITION}" \
         && echo
 
     echo "Optionally you can create following file:"

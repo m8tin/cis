@@ -1,5 +1,6 @@
 #!/bin/bash
 source /cis/core/base.module.sh
+base.loadModule composition
 base.loadModule ssh
 
 
@@ -51,12 +52,12 @@ function checkSync() {
     local _COMPOSITION_PATH
     for _COMPOSITION_PATH in "${CIS[COMPOSITIONS]}"*; do
 
+        local _COMPOSITION_NAME="${_COMPOSITION_PATH##*/}"   #Removes longest  matching pattern '*/' from the begin
+
         # If remote host is found than it is responsible for this container-composition, otherwise skip
-        #   (grep -E "^[[:blank:]]*something" means. Line has to start with "something", leading blank chars are ok.)
-        grep -E "^[[:blank:]]*${_REMOTE_HOSTNAME_SHORT}" "${_COMPOSITION_PATH}/composition-sync-hosts" &> /dev/null \
+        composition.shouldBeSyncedByGivenHost "${_COMPOSITION_NAME}" "${_REMOTE_HOSTNAME_FQDN}" \
             || continue;
 
-        local _COMPOSITION_NAME="${_COMPOSITION_PATH##*/}"   #Removes longest  matching pattern '*/' from the begin
         local _LAST_SNAPSHOT_UNIXTIME="$(echo "${_SNAPSHOTS}" | grep ${_COMPOSITION_NAME} | tail -n 1 | cut -d' ' -f1)"
         local _SECONDS_BEHIND=$[ ${_NOW_UTC_UNIXTIME} - ${_LAST_SNAPSHOT_UNIXTIME} ]
 

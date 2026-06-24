@@ -61,6 +61,22 @@ function composition.printAllSyncedByThisHost() {
     done
 }
 
+# composition.printAllSyncingHosts
+#
+# This function prints the name of all hosts the given composition is syncted to.
+function composition.printAllSyncingHosts() {
+    local _COMPOSITION _SYNCHOSTS_FILE
+    _COMPOSITION="${1:?"composition.printAllSyncingHosts(): Missing first parameter COMPOSITION"}"
+    _SYNCHOSTS_FILE="${CIS[COMPOSITIONS]:?"composition.printAllSyncingHosts(): Missing CIS_COMPOSITIONS"}${_COMPOSITION}/zfssync-hosts"
+    readonly _COMPOSITION _SYNCHOSTS_FILE
+
+    [ -f "${_SYNCHOSTS_FILE}" ] \
+        && cat "${_SYNCHOSTS_FILE}" \
+        && return 0
+
+    return 1
+}
+
 # composition.printZFS
 #  - COMPOSITION mandatory: "uptime-kuma-prod"
 #
@@ -114,7 +130,7 @@ function composition.shouldRunOnThisHost() {
 #  - HOST        mandatory: "server.your-domain.net"
 #
 # This function checks if the given composition is or should be synced to the given host.
-# Therefore a file 'composition-sync-hosts' defines a list of host, one per line, where the composition should be synced to.
+# Therefore a file 'zfssync-hosts' defines a list of host, one per line, where the composition should be synced to.
 # The given host either runs the composition or syncs it.
 function composition.shouldBeSyncedByGivenHost() {
     local _COMPOSITION _HOST _COMPOSITION_PATH _RUNNINGHOST_FILE _SYNCHOSTS_FILE
@@ -122,7 +138,7 @@ function composition.shouldBeSyncedByGivenHost() {
     _HOST="${2:?"composition.shouldBeSyncedByGivenHost(): Missing second parameter HOST"}"
     _COMPOSITION_PATH="${CIS[COMPOSITIONS]:?"composition.shouldBeSyncedByGivenHost(): Missing CIS_COMPOSITIONS"}${_COMPOSITION}/"
     _RUNNINGHOST_FILE="${_COMPOSITION_PATH}running-host"
-    _SYNCHOSTS_FILE="${_COMPOSITION_PATH}composition-sync-hosts"
+    _SYNCHOSTS_FILE="${_COMPOSITION_PATH}zfssync-hosts"
     readonly _COMPOSITION _HOST _COMPOSITION_PATH _RUNNINGHOST_FILE _SYNCHOSTS_FILE
 
     # This host either runs the composition or syncs it.

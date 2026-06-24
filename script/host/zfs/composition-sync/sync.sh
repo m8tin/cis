@@ -207,9 +207,9 @@ function receiveOnceSingle() {
 function usage() {
     echo
     echo 'Commands:'
-    echo '  --loopAll                   : This will start one screen session per composition ("composition-sync-hosts"),'
+    echo '  --loopAll                   : This will start one screen session per composition ("zfssync-hosts"),'
     echo '                                    and run the sync process in an endless loop.'
-    echo '  --onceAll                   : This will run the sync process once for each composition ("composition-sync-hosts").'
+    echo '  --onceAll                   : This will run the sync process once for each composition ("zfssync-hosts").'
     echo '                                    e.g.: you can use it in crontab as a daily backup.'
     echo '  --loopSingle COMPOSITION    : This will run the sync process in an endless loop but just for the specified COMPOSITION.'
     echo '  --onceSingle COMPOSITION    : This will run the sync process once just for the specified COMPOSITION.'
