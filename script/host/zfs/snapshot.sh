@@ -91,6 +91,11 @@ function snapshot() {
         if [ -n "${_ZFS}" ]; then
             (
                 flock -n 9 || return 1
+        ! composition.shouldRunOnThisHost "${_COMPOSITION}" \
+            && printf -- "ZFS will be skipped, because this host '%b' is not running the composition:\n" "${CIS[HOST]}" >&2 \
+            && printf -- "  - Composition : %b\n" "${_COMPOSITION}" >&2 \
+            && printf -- "  - Running host: %b\n" "$(composition.printRunningHost "${_COMPOSITION}")" >&2 \
+            && continue
 
                 case "${_MODE:?"Missing MODE"}" in
                     MINUTELY) zfs snapshot "${_ZFS}@SNAPMINUTELY_${_MINUTE}" 2> /dev/null \

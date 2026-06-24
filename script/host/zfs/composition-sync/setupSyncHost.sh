@@ -5,14 +5,14 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 source /cis/core/base.module.sh
+base.loadModule composition
 
 
 
 function setup() {
-    local _COMPOSITION _COMPOSITIONS_FOLDER _CURRENT_HOST_FILE _SYNC_HOSTS_FILE
+    local _COMPOSITION _COMPOSITIONS_FOLDER _SYNC_HOSTS_FILE
     _COMPOSITION="${1}"
     _COMPOSITIONS_FOLDER="${CIS[DOMAINDEFINITIONS]}compositions/"
-    _CURRENT_HOST_FILE="${_COMPOSITIONS_FOLDER}${_COMPOSITION}/current-host"
     _SYNC_HOSTS_FILE="${_COMPOSITIONS_FOLDER}${_COMPOSITION}/composition-sync-hosts"
     readonly _COMPOSITION _COMPOSITIONS_FOLDER
 
@@ -20,7 +20,7 @@ function setup() {
     echo
     echo "No folder for your defined composition settings found: ${_COMPOSITIONS_FOLDER}"
     echo "Please create it and add your custom composition settings in there, following this convention:"
-    echo "  1.) './NAME_OF_THE_COMPOSITION/current-host'            containing one line with the FQDN of the host running the composition."
+    echo "  1.) './NAME_OF_THE_COMPOSITION/running-host'            containing one line with the FQDN of the host running the composition."
     echo "  2.) './NAME_OF_THE_COMPOSITION/composition-sync-hosts'  containing a list of hosts receiving the composition, one host with its FQDN per line."
     echo
 
@@ -29,9 +29,8 @@ function setup() {
         && echo
 
     [ -n "${_COMPOSITION}" ] \
-        && [ -f "${_CURRENT_HOST_FILE}" ] \
         && echo "Current defined host to run composition '${_COMPOSITION}' is:" \
-        && cat "${_CURRENT_HOST_FILE}" \
+        && composition.printRunningHost "${_COMPOSITION}" \
         && echo
 
     [ -n "${_COMPOSITION}" ] \

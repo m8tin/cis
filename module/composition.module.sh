@@ -33,6 +33,22 @@ function composition.printAllRunningOnThisHost() {
     done
 }
 
+# composition.printRunningHost
+#
+# This function prints the name of the host the given composition is running on.
+function composition.printRunningHost() {
+    local _COMPOSITION _RUNNINGHOST_FILE
+    _COMPOSITION="${1:?"composition.printRunningHost(): Missing first parameter COMPOSITION"}"
+    _RUNNINGHOST_FILE="${CIS[COMPOSITIONS]:?"composition.printRunningHost(): Missing CIS_COMPOSITIONS"}${_COMPOSITION}/running-host"
+    readonly _COMPOSITION _RUNNINGHOST_FILE
+
+    [ -f "${_RUNNINGHOST_FILE}" ] \
+        && head -n 1 -- "${_RUNNINGHOST_FILE}" \
+        && return 0
+
+    return 1
+}
+
 # composition.printAllSyncedByThisHost
 #
 # This function prints a list of all compositions which should be synced to this host, one per line.
@@ -75,19 +91,19 @@ function composition.printZFS() {
 #  - COMPOSITION mandatory: "uptime-kuma-prod"
 #
 # This function checks if the given composition runs or should run on this host.
-# Therefore a file 'current-host' defines the the current host where the composition runs.
+# Therefore a file 'running-host' defines the the current host where the composition runs.
 function composition.shouldRunOnThisHost() {
-    local _COMPOSITION _CURRENTHOST_FILE
+    local _COMPOSITION _RUNNINGHOST_FILE
     _COMPOSITION="${1:?"composition.shouldRunOnThisHost(): Missing first parameter COMPOSITION"}"
-    _CURRENTHOST_FILE="${CIS[COMPOSITIONS]:?"composition.shouldRunOnThisHost(): Missing CIS_COMPOSITIONS"}${_COMPOSITION}/current-host"
-    readonly _COMPOSITION _CURRENTHOST_FILE
+    _RUNNINGHOST_FILE="${CIS[COMPOSITIONS]:?"composition.shouldRunOnThisHost(): Missing CIS_COMPOSITIONS"}${_COMPOSITION}/running-host"
+    readonly _COMPOSITION _RUNNINGHOST_FILE
 
-    ! [ -f "${_CURRENTHOST_FILE}" ] \
-         && print.failure "Missing file current-host for composition: '${_COMPOSITION}'" \
+    ! [ -f "${_RUNNINGHOST_FILE}" ] \
+         && print.failure "Missing file running-host for composition: '${_COMPOSITION}'" \
          && return 1
 
     [ -n "${CIS[HOST]}" ] \
-         && head -n 1 -- "${_CURRENTHOST_FILE}" | grep -q -E -- "^${CIS[HOST]}" \
+         && head -n 1 -- "${_RUNNINGHOST_FILE}" | grep -q -E -- "^${CIS[HOST]}" \
          && return 0
 
     return 1
@@ -101,18 +117,18 @@ function composition.shouldRunOnThisHost() {
 # Therefore a file 'composition-sync-hosts' defines a list of host, one per line, where the composition should be synced to.
 # The given host either runs the composition or syncs it.
 function composition.shouldBeSyncedByGivenHost() {
-    local _COMPOSITION _HOST _COMPOSITION_PATH _CURRENTHOST_FILE _SYNCHOSTS_FILE
+    local _COMPOSITION _HOST _COMPOSITION_PATH _RUNNINGHOST_FILE _SYNCHOSTS_FILE
     _COMPOSITION="${1:?"composition.shouldBeSyncedByGivenHost(): Missing first parameter COMPOSITION"}"
     _HOST="${2:?"composition.shouldBeSyncedByGivenHost(): Missing second parameter HOST"}"
     _COMPOSITION_PATH="${CIS[COMPOSITIONS]:?"composition.shouldBeSyncedByGivenHost(): Missing CIS_COMPOSITIONS"}${_COMPOSITION}/"
-    _CURRENTHOST_FILE="${_COMPOSITION_PATH}current-host"
+    _RUNNINGHOST_FILE="${_COMPOSITION_PATH}running-host"
     _SYNCHOSTS_FILE="${_COMPOSITION_PATH}composition-sync-hosts"
-    readonly _COMPOSITION _HOST _COMPOSITION_PATH _CURRENTHOST_FILE _SYNCHOSTS_FILE
+    readonly _COMPOSITION _HOST _COMPOSITION_PATH _RUNNINGHOST_FILE _SYNCHOSTS_FILE
 
     # This host either runs the composition or syncs it.
-    # If there is no CURRENTHOST_FILE than the definition is invalid and should not be synced.
-    [ -f "${_CURRENTHOST_FILE}" ] \
-         && head -n 1 -- "${_CURRENTHOST_FILE}" | grep -q -v -E -- "^${_HOST}" \
+    # If there is no _RUNNINGHOST_FILE than the definition is invalid and should not be synced.
+    [ -f "${_RUNNINGHOST_FILE}" ] \
+         && head -n 1 -- "${_RUNNINGHOST_FILE}" | grep -q -v -E -- "^${_HOST}" \
          && grep -q -E -- "^${_HOST}" "${_SYNCHOSTS_FILE}" \
          && return 0
 

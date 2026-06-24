@@ -92,8 +92,7 @@ function receive() {
     local _RECEIVERHOST _COMPOSITION _SOURCEHOST _SSH_PORT _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
     _COMPOSITION="${1:?"receive(): Missing first parameter COMPOSITION"}"
     _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
-    _SOURCEHOST=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/current-host" 2> /dev/null)
-    base.set _SOURCEHOST "${_SOURCEHOST}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
+    base.set _SOURCEHOST "$(composition.printRunningHost "${_COMPOSITION}")" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
     _SSH_PORT=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/ssh-port" 2> /dev/null)
     base.set _SSH_PORT "${_SSH_PORT:-22}" '^[1-9][0-9]{1,4}$'
     _SSH_COMMAND="ssh -p ${_SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -C composition-sync@${_SOURCEHOST}"
