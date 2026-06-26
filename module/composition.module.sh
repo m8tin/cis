@@ -77,17 +77,15 @@ function composition.printAllSyncingHosts() {
     return 1
 }
 
-# composition.printZFS
+# composition.printZfsVerified
 #  - COMPOSITION mandatory: "uptime-kuma-prod"
 #
-# This function prints zhe matching ZFS of zje given composition which stores the data or is synced.
-function composition.printZFS() {
-    local _COMPOSITION _ZFS_BRANCH _ZFS _ZFS_VERIFIED
-    _COMPOSITION="${1:?"composition.printZfsOfComposition(): Missing first parameter COMPOSITION"}"
-    _ZFS_BRANCH="$(cat "${CIS[COMPOSITIONS]}${_COMPOSITION}/zfs-branch" 2> /dev/null)"
-    _ZFS_BRANCH="${_ZFS_BRANCH%/}"        #Remove tailing '/' if exists
-    _ZFS="${_ZFS_BRANCH:-"zpool1/persistent"}/${_COMPOSITION}"
-    readonly _COMPOSITION _ZFS_BRANCH _ZFS
+# This function prints the matching ZFS of the given composition which stores the data or is synced.
+function composition.printZfsVerified() {
+    local _COMPOSITION _ZFS _ZFS_VERIFIED
+    _COMPOSITION="${1:?"composition.printZfsVerified(): Missing first parameter COMPOSITION"}"
+    _ZFS="$(composition.printZfs "${_COMPOSITION}")"
+    readonly _COMPOSITION _ZFS
 
     if composition.shouldRunOnThisHost "${_COMPOSITION}"; then
         _ZFS_VERIFIED="$(zfs list -H -o name "${_ZFS}" 2> /dev/null)"
@@ -99,7 +97,45 @@ function composition.printZFS() {
         && echo "${_ZFS_VERIFIED}" \
         && return 0
 
-    print.failure "ZFS not found:" "${_ZFS}"
+    print.failure "ZFS not found:" "Given value was: ${_ZFS}"
+    return 1
+}
+
+# composition.printZfsBackup
+#  - COMPOSITION mandatory: "uptime-kuma-prod"
+#
+# This function prints the ZFS branch where the given composition is stored in.
+function composition.printZfsBackup() {
+    local _COMPOSITION
+    _COMPOSITION="${1:?"composition.printZfsBackup(): Missing first parameter COMPOSITION"}"
+    readonly _COMPOSITION
+
+    echo "$(composition.printZfs "${_COMPOSITION}")-BACKUP" \
+        && return 0
+
+    print.failure "No valid ZFS backup branch found."
+    return 1
+}
+
+# composition.printZfs
+#  - COMPOSITION mandatory: "uptime-kuma-prod"
+#
+# This function prints the ZFS branch where the given composition is stored in.
+function composition.printZfs() {
+    local _COMPOSITION _ZFS_FILE
+    _COMPOSITION="${1:?"composition.printZfs(): Missing first parameter COMPOSITION"}"
+    _ZFS_FILE="${CIS[COMPOSITIONS]}${_COMPOSITION}/zfs"
+    readonly _COMPOSITION _ZFS_FILE
+
+    ! [ -f "${_ZFS_FILE}" ] \
+        && echo "zpool1/persistent/${_COMPOSITION}" \
+        && return 0
+
+    base.set _RESULT "$(head -n 1 "${_ZFS_FILE}" 2> /dev/null)" "${REGEX[ZFS]}" \
+        && echo "${_RESULT}" \
+        && return 0
+
+    print.failure "No valid ZFS branch found in file: '${_ZFS_FILE}'"
     return 1
 }
 

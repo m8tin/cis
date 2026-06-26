@@ -89,7 +89,7 @@ function tryRollbackToRepair() {
 }
 
 function receive() {
-    local _RECEIVERHOST _COMPOSITION _SOURCEHOST _SSH_PORT _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
+    local _RECEIVERHOST _COMPOSITION _SOURCEHOST _SSH_PORT _SSH_COMMAND _SEND_SCRIPT _ZFS_BACKUP
     _COMPOSITION="${1:?"receive(): Missing first parameter COMPOSITION"}"
     _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
     base.set _SOURCEHOST "$(composition.printRunningHost "${_COMPOSITION}")" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$'
@@ -97,47 +97,45 @@ function receive() {
     base.set _SSH_PORT "${_SSH_PORT:-22}" '^[1-9][0-9]{1,4}$'
     _SSH_COMMAND="ssh -p ${_SSH_PORT} -o ConnectTimeout=20 -o ServerAliveInterval=15 -C composition-sync@${_SOURCEHOST}"
     _SEND_SCRIPT="${CIS[SCRIPTSROOT]:?"Missing CIS_SCRIPTSROOT"}host/zfs/composition-sync/sync-send.sh"
-    _ZFS_BRANCH=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION}/zfs-branch" 2> /dev/null)
-    base.set _ZFS_BRANCH "${_ZFS_BRANCH:-zpool1/persistent}" '^[a-zA-Z][a-zA-Z0-9/_-]*[a-zA-Z0-9]$'
-    _ZFS="${_ZFS_BRANCH%/}/${_COMPOSITION}-BACKUP"
-    readonly _RECEIVERHOST _COMPOSITION _SSH_COMMAND _SEND_SCRIPT _ZFS_BRANCH _ZFS
+    _ZFS_BACKUP="$(composition.printZfs "${_COMPOSITION}")-BACKUP"
+    readonly _RECEIVERHOST _COMPOSITION _SSH_COMMAND _SEND_SCRIPT _ZFS_BACKUP
     (
         flock -n 9 || exit 1
 
         _COMMON_SNAPSHOT=""
-        _RESUME_TOKEN=$(zfs get -H -o value receive_resume_token "${_ZFS}" 2> /dev/null)
+        _RESUME_TOKEN=$(zfs get -H -o value receive_resume_token "${_ZFS_BACKUP}" 2> /dev/null)
         if [ -n "${_RESUME_TOKEN}" ] && [ "${_RESUME_TOKEN}" != "-" ]; then
             print.important "Resume token present trying to resume at ${_RESUME_TOKEN}\n"
             _COMMON_SNAPSHOT="@RESUME"
         else
             _RESUME_TOKEN=""
-            _COMMON_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" 2> /dev/null | head -n 1)
-            ! [ -z "${_COMMON_SNAPSHOT}" ] \
+            _COMMON_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS_BACKUP}" 2> /dev/null | head -n 1)
+            [ -n "${_COMMON_SNAPSHOT}" ] \
                 && print.data "Rolling back to newest snapshot: ${_COMMON_SNAPSHOT} ... " \
                 && zfs rollback -r "${_COMMON_SNAPSHOT}" \
+                && _COMMON_SNAPSHOT="@${_COMMON_SNAPSHOT#*@}" \
                 && print.good "done\n"
         fi
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
-        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_RECEIVERHOST}\" \"${_ZFS_BRANCH}\" \"${_COMPOSITION}\" \"@${_COMMON_SNAPSHOT#*@}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS}"
+        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_COMPOSITION}\" \"${_RECEIVERHOST}\" \"${_COMMON_SNAPSHOT}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS_BACKUP}"
         if [ $? -ne 0 ]; then
             print.failure "Unable to receive stream" \
             "These settings were used" \
             "- Sending host:     ${_SOURCEHOST}:${_SSH_PORT}" \
-            "- Receiving host:   ${_RECEIVERHOST}" \
-            "- ZFS Branch:       ${_ZFS_BRANCH}" \
             "- Composition:      ${_COMPOSITION}" \
-            "- Offered snapshot: @${_COMMON_SNAPSHOT#*@}" \
+            "- Receiving host:   ${_RECEIVERHOST}" \
+            "- Offered snapshot: ${_COMMON_SNAPSHOT}" \
             "- Resume token:     ${_RESUME_TOKEN}"
             print.highlight "Current state of snapshots:\n"
-            zfs list -t snapshot "${_ZFS}" 2> /dev/null | tail
-            tryRollbackToRepair "${_COMPOSITION}" "${_ZFS}" && return 0
+            zfs list -t snapshot "${_ZFS_BACKUP}" 2> /dev/null | tail
+            tryRollbackToRepair "${_COMPOSITION}" "${_ZFS_BACKUP}" && return 0
             return 1
         fi
 
-        protectZFS "${_ZFS}"
-        removeForeignSyncSnapshots "${_ZFS}"
-        removeOutdatedSyncSnapshots "${_ZFS}"
+        protectZFS "${_ZFS_BACKUP}"
+        removeForeignSyncSnapshots "${_ZFS_BACKUP}"
+        removeOutdatedSyncSnapshots "${_ZFS_BACKUP}"
 
     ) 9>>/tmp/synccomposition.${_COMPOSITION}.lock
 

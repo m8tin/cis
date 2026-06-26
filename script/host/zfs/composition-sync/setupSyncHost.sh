@@ -38,10 +38,10 @@ function setup() {
         && echo
 
     echo "Optionally you can create following file:"
-    echo "  - rollback   (e.g.: date +%F > rollback)                 : allows the removal of the newest @SYNC snapshots of this day,"
-    echo "                                                                 as long as no normal snapshot is reached."
-    echo "  - ssh-port   (e.g.: echo 22 > ssh-port)                  : allows to use a custom port for the SSH connection."
-    echo '  - zfs-branch (e.g.: echo zpool1/persistent > zfs-branch) : allows to use a custom zfs prefix like: ${zfs-branch}/${composition}.'
+    echo "  - rollback (e.g.: date +%F > rollback)                         : allows the removal of the newest @SYNC snapshots of this day,"
+    echo "                                                                       as long as no normal snapshot is reached."
+    echo "  - ssh-port (e.g.: echo 22 > ssh-port)                          : allows to use a custom port for the SSH connection."
+    echo '  - zfs      (e.g.: echo zpool1/persistent/${composition} > zfs) : allows to use a custom zfs prefix like: ${zfs}.'
     return 0
 }
 

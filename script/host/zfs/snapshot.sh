@@ -16,7 +16,7 @@ function cleanup() {
     local _COMPOSITION _ZFS
     composition.printAll | while read -r _COMPOSITION; do
 
-        _ZFS="$(composition.printZFS "${_COMPOSITION}")"
+        _ZFS="$(composition.printZfsVerified "${_COMPOSITION}")"
         [ -n "${_ZFS}" ] \
             && printf -- "Cleaning snapshots of: '%b'\n" "${_ZFS}" \
             && local _LIST=( $(zfs list -t snap -H -o name -S creation "${_ZFS}" | grep -F '@SNAP' ) )
@@ -87,7 +87,7 @@ function snapshot() {
         _MODE="${1:-"$(cat "${CIS[COMPOSITIONS]}${_COMPOSITION}/snapshot-mode" 2> /dev/null)"}"
         _MODE="${_MODE:-"HOURLY"}"
 
-        _ZFS="$(composition.printZFS "${_COMPOSITION}")"
+        _ZFS="$(composition.printZfsVerified "${_COMPOSITION}")"
         if [ -n "${_ZFS}" ]; then
             (
                 flock -n 9 || return 1
