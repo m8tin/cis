@@ -196,6 +196,7 @@ function prepare.setREGEX() {
     REGEX[DIRPATH]='/([a-zA-Z0-9._-]+/)*'
     REGEX[HOST]='[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?'
     REGEX[PORT]='[0-9]{1,5}'
+    REGEX[RESUMETOKEN]='[0-9][A-Za-z0-9_-]+'
     REGEX[SNAPSHOT]='@[a-zA-Z]([a-zA-Z0-9.:_-]*[a-zA-Z0-9])?'
     REGEX[SYNCSNAPSHOT]='@SYNC_[a-zA-Z0-9.:_-]*[a-zA-Z0-9]'
     REGEX[USER]='[a-zA-Z]([a-zA-Z0-9._-]*[a-zA-Z0-9])?'

@@ -41,7 +41,7 @@ function removeForeignSyncSnapshots() {
     zfs list -t snapshot -H -o name "${_ZFS}" | grep -- "${_ZFS}@SYNC" | grep -v -i "@SYNC_${_RECEIVERHOST}_" | while read _SNAP; do
     print.data "Removing foreign snapshot:  ${_SNAP} ... " \
         && destroySyncSnapshot "${_ZFS}" "${_SNAP}" \
-        && print.good "done\n"
+        && print.done
     done
 
     return 0
@@ -61,7 +61,7 @@ function removeOutdatedSyncSnapshots() {
     zfs list -t snapshot -H -o name "${_ZFS}" | grep -- "${_ZFS}@SYNC_${_RECEIVERHOST}_" | grep -v -i "${_NEWEST_SNAPSHOT}" | while read _SNAP; do
     print.data "Removing outdated snapshot: ${_SNAP} ... " \
         && destroySyncSnapshot "${_ZFS}" "${_SNAP}" \
-        && print.good "done\n"
+        && print.done
     done
 
     return 0
@@ -102,7 +102,7 @@ function receive() {
     (
         flock -n 9 || exit 1
 
-        _COMMON_SNAPSHOT=""
+        local _COMMON_SNAPSHOT _RESUME_TOKEN
         _RESUME_TOKEN=$(zfs get -H -o value receive_resume_token "${_ZFS_BACKUP}" 2> /dev/null)
         if [ -n "${_RESUME_TOKEN}" ] && [ "${_RESUME_TOKEN}" != "-" ]; then
             print.important "Resume token present trying to resume at ${_RESUME_TOKEN}\n"
@@ -110,11 +110,16 @@ function receive() {
         else
             _RESUME_TOKEN=""
             _COMMON_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS_BACKUP}" 2> /dev/null | head -n 1)
-            [ -n "${_COMMON_SNAPSHOT}" ] \
-                && print.data "Rolling back to newest snapshot: ${_COMMON_SNAPSHOT} ... " \
+            if [ -n "${_COMMON_SNAPSHOT}" ]; then
+                print.data "Newest snapshot found, rolling back: ${_COMMON_SNAPSHOT} ... " \
                 && zfs rollback -r "${_COMMON_SNAPSHOT}" \
                 && _COMMON_SNAPSHOT="@${_COMMON_SNAPSHOT#*@}" \
-                && print.good "done\n"
+                && print.done
+            else 
+                print.data "No snapshot found, prepare replication ... " \
+                && _COMMON_SNAPSHOT='@REPLICATION' \
+                && print.done
+            fi
         fi
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
@@ -223,7 +228,7 @@ function usage() {
 
 
 # Parameter 2: only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
-base.set COMPOSITION "${2}" '^[a-zA-Z0-9][a-zA-Z0-9_-]*$' optional
+base.set COMPOSITION "${2}" "${REGEX[COMPOSITION]}" optional
 
 case "${1}" in
     --onceAll)
