@@ -193,6 +193,7 @@ function prepare.setREGEX() {
     # set the values into the global array 'REGEX',
     REGEX[COMMAND]='[]a-zA-Z0-9[|/_:,." -]+'                 #WARNING: Escaping does not work properly here, so we need to position the special characters in a clever way.
     REGEX[COMPOSITION]='[a-zA-Z]([a-zA-Z0-9_-]*[a-zA-Z0-9])?'
+    REGEX[DATE]='[0-9]{4}-[0-9]{2}-[0-9]{2}'
     REGEX[DIRPATH]='/([a-zA-Z0-9._-]+/)*'
     REGEX[HOST]='[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?'
     REGEX[PORT]='[0-9]{1,5}'
@@ -416,7 +417,7 @@ function base.set() {
         && readonly "${_CLEAN_VARNAME}" \
         && return 0
 
-    echo "FAILURE: - base.set(): Validation '${_REGEX}' failed for ${_VARNAME}" >&2
+    printf -- '%s\n' "FAILURE: - base.set(): Validation '${_REGEX}' failed for variable '${_VARNAME}', value was: '${_VALUE}'" >&2
     exit 1
 }
 
