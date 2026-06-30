@@ -73,7 +73,7 @@ function tryRollbackToRepair() {
     _ZFS="${2:?"tryRollbackToRepair(): Missing second parameter ZFS"}"
     _RECEIVERHOST="${CIS[HOST]:?"Missing CIS_HOST"}"
     _ROLLBACK_DAY=$(head -n 1 "${CIS[DOMAINDEFINITIONS]:?"Missing CIS_DOMAINDEFINITIONS"}compositions/${_COMPOSITION:?"Missing COMPOSITION"}/rollback")
-    base.set _ROLLBACK_DAY "${_ROLLBACK_DAY:-'2020-01-01'}" '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    base.set _ROLLBACK_DAY "${_ROLLBACK_DAY:-2020-01-01}" "${REGEX[DATE]}"
     _ROLLBACK_SNAPSHOT=$(zfs list -H -o name -S creation -t snapshot "${_ZFS}" | head -n 1 | grep -F -- "@SYNC_${_RECEIVERHOST}_${_ROLLBACK_DAY}_")
     readonly _COMPOSITION _RECEIVERHOST _ZFS _ROLLBACK_SNAPSHOT
 
@@ -99,6 +99,8 @@ function receive() {
     _SEND_SCRIPT="${CIS[SCRIPTSROOT]:?"Missing CIS_SCRIPTSROOT"}host/zfs/composition-sync/sync-send.sh"
     _ZFS_BACKUP="$(composition.printZfs "${_COMPOSITION}")-BACKUP"
     readonly _RECEIVERHOST _COMPOSITION _SSH_COMMAND _SEND_SCRIPT _ZFS_BACKUP
+
+    print.highlight "\nSyncing: ${_COMPOSITION}\n"
     (
         flock -n 9 || exit 1
 
@@ -115,7 +117,7 @@ function receive() {
                 && zfs rollback -r "${_COMMON_SNAPSHOT}" \
                 && _COMMON_SNAPSHOT="@${_COMMON_SNAPSHOT#*@}" \
                 && print.done
-            else 
+            else
                 print.data "No snapshot found, prepare replication ... " \
                 && _COMMON_SNAPSHOT='@REPLICATION' \
                 && print.done
@@ -144,7 +146,9 @@ function receive() {
 
     ) 9>>/tmp/synccomposition.${_COMPOSITION}.lock
 
-    [ $? -eq 0 ] && return 0
+    [ $? -eq 0 ] \
+        && print.success \
+        && return 0
 
     return 1
 }
