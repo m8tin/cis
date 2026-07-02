@@ -14,7 +14,7 @@ function cleanup() {
     readonly _KEEP_MINUTELY _KEEP_HOURLY _KEEP_DAILY _KEEP_MONTHLY
 
     local _COMPOSITION _ZFS
-    composition.printAll | while read -r _COMPOSITION; do
+    { composition.printAllRunningOnThisHost; composition.printAllSyncedByThisHost; } | while read -r _COMPOSITION; do
 
         _ZFS="$(composition.printZfsVerified "${_COMPOSITION}")"
         [ -n "${_ZFS}" ] \
