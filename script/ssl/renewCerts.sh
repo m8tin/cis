@@ -381,6 +381,7 @@ function single() {
         --fullchain-file "${_DOMAIN_FOLDER}fullchain.crt" \
         --key-file "${_DOMAIN_FOLDER}private.key" \
         && openssl pkcs12 -export -in "${_DOMAIN_FOLDER}fullchain.crt" -inkey "${_DOMAIN_FOLDER}private.key" -out "${_DOMAIN_FOLDER}bundle.pkx" -passout pass: \
+        && chmod 640 "${_DOMAIN_FOLDER}fullchain.crt" "${_DOMAIN_FOLDER}private.key" "${_DOMAIN_FOLDER}bundle.pkx" \
         && echo "Certificate of domain '${_PRETTY_DOMAIN}' was updated." \
         && tryGitPush "${_PRETTY_DOMAIN}" \
         && return 0
