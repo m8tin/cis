@@ -396,11 +396,13 @@ function base.printWithColor() {
 }
 
 function base.set() {
-    local _VARNAME="${1:?"base.set(): Missing first parameter VARNAME"}"
-    local _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
-    local _VALUE="${2}"
-    local _REGEX="${3:?"base.set(): Missing third parameter REGEX"}"
-    local _MODE="${4}"
+    local _CLEAN_VARNAME _MODE _REGEX _VALUE _VARNAME
+    _VARNAME="${1:?"base.set(): Missing first parameter VARNAME"}"
+    _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
+    _VALUE="${2}"
+    _REGEX="${3:?"base.set(): Missing third parameter REGEX"}"
+    _MODE="${4}"
+    readonly _CLEAN_VARNAME _MODE _REGEX _VALUE _VARNAME
 
     [ "${_VARNAME}" != "${_CLEAN_VARNAME}" ] \
         && echo "FAILURE - base.set(): Invalid name of variable: ${_VARNAME}" >&2 \
@@ -417,7 +419,28 @@ function base.set() {
         && readonly "${_CLEAN_VARNAME}" \
         && return 0
 
-    printf -- '%s\n' "FAILURE: - base.set(): Validation '${_REGEX}' failed for variable '${_VARNAME}', value was: '${_VALUE}'" >&2
+    printf -- '%s\n' "FAILURE: - base.set(): Unable to set variable '${_VARNAME}' to value '${_VALUE}', validation failed: '${_REGEX}'" >&2
+    exit 1
+}
+
+function base.setFromFile() {
+    local _CLEAN_VARNAME _FILENAME _VARNAME
+    _VARNAME="${1:?"base.setFromFile(): Missing first parameter VARNAME"}"
+    _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
+    _FILENAME="${2:?"base.serFromFile(): Missing second parameter FILENAME"}"
+    readonly _CLEAN_VARNAME _FILENAME _VARNAME
+
+    [ "${_VARNAME}" != "${_CLEAN_VARNAME}" ] \
+        && echo "FAILURE - base.setFromFile(): Invalid name of variable: ${_VARNAME}" >&2 \
+        && exit 1
+
+    local _LINE=$(grep -m 1 -oE "^[[:blank:]]*${_CLEAN_VARNAME}=[^[:blank:]]+.*" "${_FILENAME}" 2> /dev/null) \
+        && [ -n "${_LINE}" ] \
+        && printf -v "${_CLEAN_VARNAME}" -- "%s" "${_LINE#*=}" \
+        && readonly "${_CLEAN_VARNAME}" \
+        && return 0
+
+    printf -- '%s\n' "FAILURE: - base.setFromFile(): Unable to set variable '${_VARNAME}' from file '${_FILENAME}', value not found." >&2
     exit 1
 }
 
