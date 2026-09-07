@@ -29,14 +29,14 @@ function update_repositories() {
     [ "${_MODE}" == "--repair" ] \
         && (git -C "${CIS[ROOT]:?"Missing CISROOT"}" reset --hard origin/main; \
             git -C "${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}" reset --hard origin/main; \
-            git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" reset --hard origin/main; \
+            umask 0027; git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" reset --hard origin/main; \
             echo "Run repairs") \
         && return 0
 
     [ "${_MODE}" == "--test" ] \
         && git -C "${CIS[ROOT]:?"Missing CISROOT"}" pull \
         && git -C "${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}" pull \
-        && git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull \
+        && (umask 0027; git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull) \
         && echo "Run in testMode successfully." \
         && return 0
 
@@ -54,7 +54,7 @@ function update_repositories() {
 
     [ "${_MODE}" == "--states" ] \
         && printf -- "Host ${HOSTNAME} updating states: ${CIS[DOMAINSTATES]:?"Missing STATES"} ... " \
-        && (git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull &> /dev/null) \
+        && (umask 0027; git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull &> /dev/null) \
         && echo "(done)" \
         && return 0
 
@@ -62,7 +62,7 @@ function update_repositories() {
         && printf -- "Host ${HOSTNAME} updating core including scripts, definitions and states ... " \
         && (git -C "${CIS[ROOT]:?"Missing CISROOT"}" pull &> /dev/null) \
         && (git -C "${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}" pull &> /dev/null) \
-        && (git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull &> /dev/null) \
+        && (umask 0027; git -C "${CIS[DOMAINSTATES]:?"Missing STATES"}" pull &> /dev/null) \
         && echo "(done)" \
         && return 0
 

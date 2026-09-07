@@ -115,6 +115,22 @@ function getRemoteRepositoryPath() {
     return 1
 }
 
+function setSSLPermissions(){
+    local _SSLPATHS
+    _SSLPATHS="${CIS[DOMAINSTATES]}hosts/*/etc/ssl/domains/"
+    readonly _SSLPATHS
+
+    addgroup --gid 775 ssl 2> /dev/null
+    for _path in ${_SSLPATHS}; do
+        [ -d "${_path}" ] || continue
+        chown -R root:ssl "${_path}"
+        chmod -R o-rwx "${_path}"
+        find "${_path}" -type d -exec chmod g+s {} +
+    done
+
+    return 0
+}
+
 function addDefinition(){
     local _REPOSITORY
     _REPOSITORY="$(getRemoteRepositoryPath)cis-definition-${CIS[DOMAIN]}.git"
@@ -147,6 +163,8 @@ function addState() {
         && echo "Running setup as 'root' trying to add state repository:" \
         && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINSTATES]}" writable "${_REPOSITORY}" \
         && echo "  - states are usable for this host." \
+        && setSSLPermissions \
+        && echo "  - permissions for SSL are set." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
