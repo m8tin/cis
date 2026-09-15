@@ -1,5 +1,9 @@
 #!/bin/bash
 
+AES_STORE_FILE=~/tpm/aes-key-safe
+SECRETS_STORE_FILE=~/tpm/secrets
+SECRETS_PLAIN_PATH=/run/user/$(id -u)/secrets/
+
 
 
 function checkPreconditions() {
@@ -18,8 +22,8 @@ function checkPreconditions() {
 
 function checkSafe() {
     printf -- "%s" 'Checking TPM derived safe ... ' >&2 \
-        && [ -f /root/tpm/aes-key-safe.priv ] \
-        && [ -f /root/tpm/aes-key-safe.pub ] \
+        && [ -f "${AES_STORE_FILE}" ] \
+        && [ -f "${AES_STORE_FILE}.pub" ] \
         && printf -- "%s\n" '(found)' >&2 \
         && return 0
 
@@ -53,22 +57,19 @@ function checkOrCreateSafe() {
     checkSafe \
         && return 0
 
-    [ -f /root/tpm/aes-key-safe.priv ] \
-        && echo 'ABORT existing safe file found: "/root/tpm/aes-key-safe.priv"' >&2 \
+    [ -f "${AES_STORE_FILE}" ] \
+        && echo 'ABORT existing safe file found: "${AES_STORE_FILE}"' >&2 \
         && return 1
 
-    [ -f /root/tpm/aes-key-safe.pub ] \
-        && echo 'ABORT existing safe file found: "/root/tpm/aes-key-safe.pub"' >&2 \
+    [ -f "${AES_STORE_FILE}.pub" ] \
+        && echo 'ABORT existing safe file found: "${AES_STORE_FILE}.pub"' >&2 \
         && return 1
 
     printf -- "%s" 'Creating TPM derived safe ... ' >&2
-    umask 077
-    mkdir -p /root/tpm
+    mkdir -p "$(dirname "${AES_STORE_FILE}")"
     [ -f /tmp/primary.ctx ] || tpm2_createprimary -C o -Q -c /tmp/primary.ctx
-    openssl rand 32 | tpm2_create -C /tmp/primary.ctx -Q -i - -r /root/tpm/aes-key-safe.priv -u /root/tpm/aes-key-safe.pub \
-        && [ -f /root/tpm/aes-key-safe.priv ] \
-        && [ -f /root/tpm/aes-key-safe.pub ] \
-        && printf -- "%s\n" '(done)' >&2 \
+    openssl rand 32 | tpm2_create -C /tmp/primary.ctx -Q -i - -r "${AES_STORE_FILE}" -u "${AES_STORE_FILE}.pub" \
+        && checkSafe \
         && return 0
 
     echo 'FAILURE: unable to provide a usable safe.' >&2
@@ -76,34 +77,37 @@ function checkOrCreateSafe() {
 }
 
 function seal() {
-    ! chmod -R go-rwx /dev/shm/host/secret/* \
+    # Ensure all secrets have restricte permissions before tar
+    ! chmod -R go-rwx "${SECRETS_PLAIN_PATH}" \
         && return 1
 
     [ -f /tmp/primary.ctx ] || tpm2_createprimary -C o -Q -c /tmp/primary.ctx
     [ -f /tmp/safe.ctx ] || tpm2_load \
         -C /tmp/primary.ctx -Q \
-        -r /root/tpm/aes-key-safe.priv \
-        -u /root/tpm/aes-key-safe.pub \
+        -r "${AES_STORE_FILE}" \
+        -u "${AES_STORE_FILE}.pub" \
         -c /tmp/safe.ctx
-    umask 077
     openssl enc -aes-256-cbc -salt -pbkdf2 \
-        -in <(tar -czvf - /dev/shm/host/secret/*) \
-        -out /root/tpm/host_secrets.tar.gz.aes \
+        -in <(tar -czvf - "${SECRETS_PLAIN_PATH%/}/"*) \
+        -out "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -pass file:<(tpm2_unseal -c /tmp/safe.ctx)
 }
 
 function unseal() {
-    ! [ -f /root/tpm/host_secrets.tar.gz.aes ] \
+    ! [ -f "${SECRETS_STORE_FILE}.tar.gz.aes" ] \
+        && return 1
+
+    ! mkdir -m 1700 -p "${SECRETS_PLAIN_PATH}" \
         && return 1
 
     [ -f /tmp/primary.ctx ] || tpm2_createprimary -C o -Q -c /tmp/primary.ctx
     [ -f /tmp/safe.ctx ] || tpm2_load \
         -C /tmp/primary.ctx -Q \
-        -r /root/tpm/aes-key-safe.priv \
-        -u /root/tpm/aes-key-safe.pub \
+        -r "${AES_STORE_FILE}" \
+        -u "${AES_STORE_FILE}.pub" \
         -c /tmp/safe.ctx
     openssl enc -d -aes-256-cbc -pbkdf2 \
-        -in /root/tpm/host_secrets.tar.gz.aes \
+        -in "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -out - \
         -pass file:<(tpm2_unseal -c /tmp/safe.ctx) | tar -xzvf - -C /
 }
