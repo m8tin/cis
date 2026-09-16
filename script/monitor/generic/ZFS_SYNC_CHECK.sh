@@ -5,11 +5,12 @@ base.loadModule ssh
 
 
 function checkSync() {
-    local _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
-    _REMOTE_HOST="${1:?"checkSync(): Missing first parameter REMOTE_HOST"}"
-    _MODE="${2:?"checkSync(): Missing second parameter MODE"}"
-    _GIVEN_REMOTE_HOSTNAME_FQDN="${3}"
-    readonly _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
+    local _CALLING_SCRIPTNAME _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
+    _CALLING_SCRIPTNAME="${1:?"checkSync(): Missing first parameter CALLING_SCRIPTNAME"}"
+    _REMOTE_HOST="${2:?"checkSync(): Missing second parameter REMOTE_HOST"}"
+    _MODE="${3:?"checkSync(): Missing third parameter MODE"}"
+    _GIVEN_REMOTE_HOSTNAME_FQDN="${4}"
+    readonly _CALLING_SCRIPTNAME _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
 
     local _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME _DEBUG_PATH
     _REMOTE_HOSTNAME_FQDN="${_REMOTE_HOST%%:*}"            #Removes longest  matching pattern ':*' from the end
@@ -67,18 +68,20 @@ function checkSync() {
             && continue
 
         [ "${_SECONDS_BEHIND}" -lt 60 ] \
-            && echo "ZFSSYNC_of_${_REMOTE_HOSTNAME_SHORT}_LAGGING?WARN#${_COMPOSITION_NAME} ${_SECONDS_BEHIND}s" \
+            && echo "${_CALLING_SCRIPTNAME}_LAGGING?WARN#${_COMPOSITION_NAME} ${_SECONDS_BEHIND}s" \
             && continue
 
-        echo "ZFSSYNC_of_${_REMOTE_HOSTNAME_SHORT}_LAGGING?FAIL#${_COMPOSITION_NAME} ${_SECONDS_BEHIND}s"
+        echo "${_CALLING_SCRIPTNAME}_LAGGING?FAIL#${_COMPOSITION_NAME} ${_SECONDS_BEHIND}s"
     done
 }
 
-base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-base.set GIVEN_REMOTE_HOSTNAME_FQDN "${2}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
-base.set MODE "${3:-"normal"}" '^(debug|normal)$'
+#echo "${CIS[SCRIPTNAME]}" > "/tmp/test.txt"
+base.set CALLING_SCRIPTNAME "${1:?"NAME of calling script missing:"}" '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
+base.set REMOTE_HOST "${2:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
+base.set GIVEN_REMOTE_HOSTNAME_FQDN "${3}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
+base.set MODE "${4:-"normal"}" '^(debug|normal)$'
 
-RESULTS=$(checkSync "${REMOTE_HOST}" "${MODE}" "${GIVEN_REMOTE_HOSTNAME_FQDN}")
+RESULTS=$(checkSync "${CALLING_SCRIPTNAME%.on}" "${REMOTE_HOST}" "${MODE}" "${GIVEN_REMOTE_HOSTNAME_FQDN}")
 
 [ "${MODE}" == "debug" ] \
     && echo "$RESULTS" > ${_DEBUG_PATH}RESULTS_${REMOTE_HOST}.txt
