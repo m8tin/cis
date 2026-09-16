@@ -67,8 +67,8 @@ function checkOrCreateSafe() {
 
     printf -- "%s" 'Creating TPM derived safe ... ' >&2
     mkdir -p "$(dirname "${AES_STORE_FILE}")"
-    [ -f /tmp/primary.ctx ] || tpm2_createprimary -C o -Q -c /tmp/primary.ctx
-    openssl rand 32 | tpm2_create -C /tmp/primary.ctx -Q -i - -r "${AES_STORE_FILE}" -u "${AES_STORE_FILE}.pub" \
+    tpm2_createprimary -C o -Q -c "${TMPDIR%/}/primary.ctx"
+    openssl rand 32 | tpm2_create -C "${TMPDIR%/}/primary.ctx" -Q -i - -r "${AES_STORE_FILE}" -u "${AES_STORE_FILE}.pub" \
         && checkSafe \
         && return 0
 
@@ -81,16 +81,16 @@ function seal() {
     ! chmod -R go-rwx "${SECRETS_PLAIN_PATH}" \
         && return 1
 
-    [ -f /tmp/primary.ctx ] || tpm2_createprimary -C o -Q -c /tmp/primary.ctx
-    [ -f /tmp/safe.ctx ] || tpm2_load \
-        -C /tmp/primary.ctx -Q \
+    tpm2_createprimary -C o -Q -c "${TMPDIR%/}/primary.ctx"
+    tpm2_load \
+        -C "${TMPDIR%/}/primary.ctx" -Q \
         -r "${AES_STORE_FILE}" \
         -u "${AES_STORE_FILE}.pub" \
-        -c /tmp/safe.ctx
+        -c "${TMPDIR%/}/safe.ctx"
     openssl enc -aes-256-cbc -salt -pbkdf2 \
         -in <(tar -czvf - "${SECRETS_PLAIN_PATH%/}/"*) \
         -out "${SECRETS_STORE_FILE}.tar.gz.aes" \
-        -pass file:<(tpm2_unseal -c /tmp/safe.ctx)
+        -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx")
 }
 
 function unseal() {
@@ -100,16 +100,16 @@ function unseal() {
     ! mkdir -m 1700 -p "${SECRETS_PLAIN_PATH}" \
         && return 1
 
-    [ -f /tmp/primary.ctx ] || tpm2_createprimary -C o -Q -c /tmp/primary.ctx
-    [ -f /tmp/safe.ctx ] || tpm2_load \
-        -C /tmp/primary.ctx -Q \
+    tpm2_createprimary -C o -Q -c "${TMPDIR%/}/primary.ctx"
+    tpm2_load \
+        -C "${TMPDIR%/}/primary.ctx" -Q \
         -r "${AES_STORE_FILE}" \
         -u "${AES_STORE_FILE}.pub" \
-        -c /tmp/safe.ctx
+        -c "${TMPDIR%/}/safe.ctx"
     openssl enc -d -aes-256-cbc -pbkdf2 \
         -in "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -out - \
-        -pass file:<(tpm2_unseal -c /tmp/safe.ctx) | tar -xzvf - -C /
+        -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx") | tar -xzvf - -C /
 }
 
 function usage() {
@@ -130,11 +130,15 @@ checkPreconditions || exit 1
 
 case "${1}" in
     --seal)
+        TMPDIR=$(mktemp -d --suffix .tpm.context)
+        trap 'rm -rf "${TMPDIR:?"Missing TMPDIR"}"; echo "Sealing finished, TMPDIR removed: ${TMPDIR}"' EXIT
         checkOrCreateSafe \
             && seal \
             && exit 0
         ;;
     --unseal)
+        TMPDIR=$(mktemp -d --suffix .tpm.context)
+        trap 'rm -rf "${TMPDIR:?"Missing TMPDIR"}"; echo "Unsealing finished, TMPDIR removed: ${TMPDIR}"' EXIT
         checkSafe \
             && unseal \
             && exit 0
