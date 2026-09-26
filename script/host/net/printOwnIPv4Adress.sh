@@ -44,15 +44,29 @@ function published() {
     _BOOT_HOSTNAME="$(hostname -b)"
     readonly _BOOT_HOSTNAME
 
-    nslookup -type=A "${_BOOT_HOSTNAME:?"Missing BOOT_HOSTNAME"}" | xargs -n 1 \
-        | grep -A2 -i "${_BOOT_HOSTNAME}" \
+    host -t a "${_BOOT_HOSTNAME:?"Missing BOOT_HOSTNAME"}" | xargs -n 1 \
+        | grep -A3 -i "${_BOOT_HOSTNAME}" \
+        | grep -A2 -i 'has' \
+        | grep -A1 -i 'address' \
+        | tail -n1
+}
+
+# Maybe use "resolvectl status" to get DNS Server and specify 'nslookup'
+function testified() {
+    local _BOOT_HOSTNAME
+    _BOOT_HOSTNAME="$(hostname -b)"
+    readonly _BOOT_HOSTNAME
+
+    host -t a "${_BOOT_HOSTNAME:?"Missing BOOT_HOSTNAME"}" 8.8.8.8 | xargs -n 1 \
+        | grep -A3 -i "${_BOOT_HOSTNAME}" \
+        | grep -A2 -i 'has' \
         | grep -A1 -i 'address' \
         | tail -n1
 }
 
 function verified() {
     local _PUBLISHED_IP
-    _PUBLISHED_IP="$(published)"
+    _PUBLISHED_IP="$(testified)"
     readonly _PUBLISHED_IP
 
     [ -z "${_PUBLISHED_IP}" ] \
@@ -67,7 +81,8 @@ function usage() {
     echo "  --routed    : prints the IPv4 address used to send traffic to the default gateway"
     echo "  --public    : prints all IPv4 addresses direct accessable from the internet"
     echo "  --published : prints the IPv4 address provided by DNS using this host's name"
-    echo "  --verified  : prints the IPv4 included in 'all' und respended by 'published'"
+    echo "  --testified : prints the IPv4 address provided by DNS using this host's name and the external DNS server 8.8.8.8"
+    echo "  --verified  : prints the IPv4 included in 'all' und respended by 'testified'"
 }
 
 
@@ -89,6 +104,10 @@ function main(){
             ;;
         --published)
             published
+            return 0
+            ;;
+        --testified)
+            testified
             return 0
             ;;
         --verified)
