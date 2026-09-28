@@ -87,7 +87,7 @@ function seal() {
         -r "${AES_STORE_FILE}" \
         -u "${AES_STORE_FILE}.pub" \
         -c "${TMPDIR%/}/safe.ctx"
-    openssl enc -aes-256-cbc -salt -pbkdf2 \
+    openssl enc -aes-256-cbc -md sha256 -pbkdf2 -iter 600000 -salt \
         -in <(tar -czvf - "${SECRETS_PLAIN_PATH%/}/"*) \
         -out "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx")
@@ -106,7 +106,7 @@ function unseal() {
         -r "${AES_STORE_FILE}" \
         -u "${AES_STORE_FILE}.pub" \
         -c "${TMPDIR%/}/safe.ctx"
-    openssl enc -d -aes-256-cbc -pbkdf2 \
+    openssl enc -d -aes-256-cbc -md sha256 -pbkdf2 -iter 600000 \
         -in "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -out - \
         -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx") | tar -xzvf - -C /
