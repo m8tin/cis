@@ -2,7 +2,7 @@
 
 AES_STORE_FILE=~/tpm/aes-key-safe
 SECRETS_STORE_FILE=~/tpm/secrets
-SECRETS_PLAIN_PATH=/run/user/$(id -u)/secrets/
+SECRETS_PLAIN_PATH="/run/secrets/$(id -u)/"
 
 
 
@@ -76,6 +76,28 @@ function checkOrCreateSafe() {
     return 1
 }
 
+function prepareRestrictedTmpfsDirectoryFromPath() {
+    # Startet mit /, endet mit /, mindestens 3 Schrägstriche
+    if [[ "${1:?"prepareRestrictedTmpfsDirectoryFromPath(): Missing first parameter PATH (with tailing '/')"}" =~ ^/.*([^/]+/){2,}$ ]]; then
+        local _PATH="${1%/*}"
+        local _BASE="${_PATH%/*}"
+
+        mkdir -p -m 1777 "${_BASE}"
+        ! df --output=fstype "${_BASE}" | grep -qF 'tmpfs' \
+            && return 1
+
+        ! [[ "$(stat -c "%a" "${_BASE}")" == "1777" ]] \
+            && return 1
+
+        mkdir -p -m 700 "${_PATH}"
+        ! [[ "$(stat -c "%a" "${_PATH}")" == "700" ]] \
+            && return 1
+
+        return 0
+    fi
+    return 1
+}
+
 function seal() {
     # Ensure all secrets have restricte permissions before tar
     ! chmod -R go-rwx "${SECRETS_PLAIN_PATH}" \
@@ -88,7 +110,7 @@ function seal() {
         -u "${AES_STORE_FILE}.pub" \
         -c "${TMPDIR%/}/safe.ctx"
     openssl enc -aes-256-cbc -md sha256 -pbkdf2 -iter 600000 -salt \
-        -in <(tar -czvf - "${SECRETS_PLAIN_PATH%/}/"*) \
+        -in <(tar -czvf - -C "${SECRETS_PLAIN_PATH}" .) \
         -out "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx")
 }
@@ -97,7 +119,7 @@ function unseal() {
     ! [ -f "${SECRETS_STORE_FILE}.tar.gz.aes" ] \
         && return 1
 
-    ! mkdir -m 1700 -p "${SECRETS_PLAIN_PATH}" \
+    ! prepareRestrictedTmpfsDirectoryFromPath "${SECRETS_PLAIN_PATH}" \
         && return 1
 
     tpm2_createprimary -C o -Q -c "${TMPDIR%/}/primary.ctx"
@@ -109,7 +131,7 @@ function unseal() {
     openssl enc -d -aes-256-cbc -md sha256 -pbkdf2 -iter 600000 \
         -in "${SECRETS_STORE_FILE}.tar.gz.aes" \
         -out - \
-        -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx") | tar -xzvf - -C /
+        -pass file:<(tpm2_unseal -c "${TMPDIR%/}/safe.ctx") | tar -xzvf - --no-overwrite-dir -C "${SECRETS_PLAIN_PATH}"
 }
 
 function usage() {
