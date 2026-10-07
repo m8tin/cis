@@ -7,20 +7,18 @@ source /cis/core/base.module.sh
 
 
 function checkPermissions() {
-    local _FOLDER _RIGHTS
-    _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _RIGHTS="${2:?"Missing second parameter RIGHTS"}"
-    readonly _FOLDER _RIGHTS
+    local -r _FOLDER="${1:?"Missing first parameter FOLDER"}"
+    local -r _RIGHTS="${2:?"Missing second parameter RIGHTS"}"
 
-    [ "${_RIGHTS}" == "readonly" ] \
-        && [ -d "${_FOLDER}.git" ] \
-        && ! git -C "${_FOLDER}" push --dry-run &> /dev/null \
-        && return 0
+    local -r _TESTBRANCH="write-test-branch-$(date +%s)"
 
-    [ "${_RIGHTS}" == "writable" ] \
-        && [ -d "${_FOLDER}.git" ] \
-        && git -C "${_FOLDER}" push --dry-run &> /dev/null \
-        && return 0
+    if [ -d "${_FOLDER}.git" ] && git -C "${_FOLDER}" push origin HEAD:refs/heads/${_TESTBRANCH} &> /dev/null; then
+        # Cleanup immediately
+        git -C "${_FOLDER}" push origin :${_TESTBRANCH} &> /dev/null
+        [ "${_RIGHTS}" == "writable" ] && return 0
+    else
+        [ "${_RIGHTS}" == "readonly" ] && return 0
+    fi
 
     echo "FAIL: The rights of the repository are incorrect:  ("$(readlink -f ${0})")" >&2
     echo "  - '${_FOLDER}' is not '${_RIGHTS}'" >&2
