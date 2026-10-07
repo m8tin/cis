@@ -23,8 +23,8 @@ timedatectl set-timezone Europe/Berlin
 ```sh
 apt install ubuntu-desktop-minimal
 apt install language-pack-gnome-de
-apt install xdotool
 apt install dbus-x11
+apt install xdotool
 ```
 
 
@@ -88,11 +88,11 @@ After=graphical.target
 
 [Service]
 Environment=DISPLAY=:0
-# Set firefox language, needs 'apt install language-pack-gnome-de' 
+# Set firefox language, needs 'apt install language-pack-gnome-de'
 Environment=LANG=de_DE.UTF-8
 Type=simple
 # Always a fresh firefox ('-' allow error if common does not exist)
-ExecStartPre=-/usr/bin/rm -r /home/kiosk/snap/firefox/common
+ExecStartPre=-/usr/bin/rm -rf /home/kiosk/snap/firefox/common
 # Move Mouse (should also work on small screens), needs 'apt install dbus-x11'
 ExecStartPre=/usr/bin/xdotool mousemove 4096 2160
 # See: https://wiki.mozilla.org/Firefox/CommandLineOptions (just -kiosk URL => Start-Assistant, so use -url too)
@@ -120,7 +120,32 @@ reboot
 Troubleshouting
 ---------------
 
-```
-systemctl disable pd-mapper.service
+```sh
+# No cloud-init
 apt purge cloud-init -y && apt autoremove --purge -y
+
+# If exists and fails:
+systemctl disable pd-mapper.service
+
+# If firefox should be installed via apt:
+snap remove firefox
+
+curl -o /etc/apt/keyrings/packages.mozilla.org.asc https://packages.mozilla.org/apt/repo-signing-key.gpg
+
+echo '
+Types: deb
+URIs: https://packages.mozilla.org/apt
+Suites: mozilla
+Components: main
+Signed-By: /etc/apt/keyrings/packages.mozilla.org.asc
+' | sudo tee /etc/apt/sources.list.d/mozilla.sources
+
+echo '
+Package: *
+Pin: origin packages.mozilla.org
+Pin-Priority: 1000
+' | sudo tee /etc/apt/preferences.d/mozilla
+
+apt update
+apt install firefox
 ```
