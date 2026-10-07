@@ -34,9 +34,7 @@ function isCoreDefinition() {
 }
 
 function filterInvalidAuthorizedKeysFilesOfRoot() {
-    local _FILE_DEFINED
-    _FILE_DEFINED="${1:?"Missing DEFINITION FILE"}"
-    readonly _FILE_DEFINED
+    local -r _FILE_DEFINED="${1:?"Missing DEFINITION FILE"}"
 
     #If the full filename contains 'root/.ssh/authorized_keys' then check the content.
     #Skip lines starting with '#' and if at least one remaining line contains 'ssh' and '@' then print the filename. 
@@ -56,15 +54,13 @@ function filterInvalidAuthorizedKeysFilesOfRoot() {
 }
 
 function printSelectedDefinition() {
-    local _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFAULT_ALL_HOSTS _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
-    _DEFINITIONS="${1:?"Missing CIS_ROOT"}definitions/${2:?"Missing DOMAIN"}/"
-    _CORE_FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/core/all${3:?"Missing CURRENT_FULLFILE"}"
-    _CORE_FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}core/all${3:?"Missing CURRENT_FULLFILE"}"
-    _CORE_FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}core/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/hosts/all${3:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/all${3:?"Missing CURRENT_FULLFILE"}"
-    _FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
-    readonly _DEFINITIONS _CORE_FILE_DEFAULT_ALL_HOSTS _CORE_FILE_DEFINED_ALL_HOSTS _CORE_FILE_DEFINED_THIS_HOST _FILE_DEFAULT_ALL_HOSTS _FILE_DEFINED_ALL_HOSTS _FILE_DEFINED_THIS_HOST
+    local -r _DEFINITIONS="${1:?"Missing CIS_ROOT"}definitions/${2:?"Missing DOMAIN"}/"
+    local -r _CORE_FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/core/all${3:?"Missing CURRENT_FULLFILE"}"
+    local -r _CORE_FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}core/all${3:?"Missing CURRENT_FULLFILE"}"
+    local -r _CORE_FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}core/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
+    local -r _FILE_DEFAULT_ALL_HOSTS="${1:?"Missing CIS_ROOT"}definitions/default/hosts/all${3:?"Missing CURRENT_FULLFILE"}"
+    local -r _FILE_DEFINED_ALL_HOSTS="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/all${3:?"Missing CURRENT_FULLFILE"}"
+    local -r _FILE_DEFINED_THIS_HOST="${_DEFINITIONS:?"Missing DEFINITIONS"}hosts/$(hostname -s)${3:?"Missing CURRENT_FULLFILE"}"
 
     #The following are special definitions that affect the core functionality.
     #Try this host first because it should be priorized.
@@ -105,12 +101,10 @@ function printSelectedDefinition() {
 }
 
 function createSymlinkToDefinition() {
-    local _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINED_FULLFILE _SAVED_FULLFILE
-    _CURRENT_FOLDER="${1:?"Missing CURRENT_FOLDER"}"
-    _CURRENT_FULLFILE="${2:?"Missing CURRENT_FULLFILE"}"
-    _DEFINED_FULLFILE="${3:?"Missing DEFINED_FULLFILE"}"
-    _SAVED_FULLFILE="${4:?"Missing SAVED_FULLFILE"}"
-    readonly _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINED_FULLFILE _SAVED_FULLFILE
+    local -r _CURRENT_FOLDER="${1:?"Missing CURRENT_FOLDER"}"
+    local -r _CURRENT_FULLFILE="${2:?"Missing CURRENT_FULLFILE"}"
+    local -r _DEFINED_FULLFILE="${3:?"Missing DEFINED_FULLFILE"}"
+    local -r _SAVED_FULLFILE="${4:?"Missing SAVED_FULLFILE"}"
 
     [ -f "${_CURRENT_FULLFILE}" ] \
         && [ "$(sha256sum "${_DEFINED_FULLFILE}" | cut -d' ' -f1)" == "$(sha256sum "${_CURRENT_FULLFILE}" | cut -d' ' -f1)" ] \
@@ -132,36 +126,35 @@ function createSymlinkToDefinition() {
 }
 
 function ensureUsageOfDefinitions() {
-    local _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
-    _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")/"
-    _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
-    _DOMAIN="${_DEFINITIONS##*/definitions/}"     #Removes longest  matching pattern '*/definitions/' from the begin
-    _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
+    local _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")/"
+    local -r _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
+    local _DOMAIN="${_DEFINITIONS##*/definitions/}"        #Removes longest  matching pattern '*/definitions/' from the begin
+    readonly _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
     #Build from components for safety
-    _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/")"
+    readonly _DEFINITIONS="$(printIfEqual "${_DEFINITIONS}" "${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/")"
 
 
-    _CURRENT_FULLFILE="${2:?"Missing second parameter CURRENT_FULLFILE"}"
-    _CURRENT_FOLDER="${_CURRENT_FULLFILE%/*}/"  #Removes shortest matching pattern '/*' from the end
-    ! [ -d "${_CURRENT_FOLDER}" ] \
+    local _CURRENT_FULLFILE="${2:?"Missing second parameter CURRENT_FULLFILE"}"
+    local _CURRENT_FOLDER="${_CURRENT_FULLFILE%/*}/"  #Removes shortest matching pattern '/*' from the end
+    if [ -d "${_CURRENT_FOLDER:?"Missing CURRENT_FOLDER"}" ]; then
+        _CURRENT_FOLDER="$(realpath -s "${_CURRENT_FOLDER}")"
+        readonly _CURRENT_FOLDER="${_CURRENT_FOLDER%/}/"  #Removes shortest matching pattern '/' from the end
+    else
+        true \
         && echo "FAIL: The folder cannot be read:                   ("$(readlink -f ${0})")" \
         && echo "  - '${_CURRENT_FOLDER}'" \
         && echo "  - user '"$(whoami)"' has insufficient rights on this host '$(hostname -s)'" \
         && echo "  - or the folder does not exist." \
         && return 1
-
-    _CURRENT_FOLDER="$(realpath -s "${_CURRENT_FOLDER:?"Missing CURRENT_FOLDER"}")"
-    _CURRENT_FOLDER="${_CURRENT_FOLDER%/}/"  #Removes shortest matching pattern '/' from the end
-
-    _CURRENT_FILE="$(basename "${2:?"Missing second parameter CURRENT_FULLFILE"}")"
+    fi
+    local -r _CURRENT_FILE="$(basename "${2:?"Missing second parameter CURRENT_FULLFILE"}")"
     #Build from components for safety
-    _CURRENT_FULLFILE="${_CURRENT_FOLDER:?"Missing CURRENT_FOLDER"}${_CURRENT_FILE:?"Missing CURRENT_FILE"}"
+    readonly _CURRENT_FULLFILE="${_CURRENT_FOLDER:?"Missing CURRENT_FOLDER"}${_CURRENT_FILE:?"Missing CURRENT_FILE"}"
 
 
-    _DEFINED_FULLFILE="$(printSelectedDefinition "${_CIS_ROOT}" "${_DOMAIN}" "${_CURRENT_FULLFILE}")"
-    _NOW="$(date +%Y%m%d_%H%M)"
-    _SAVED_FULLFILE="${_CURRENT_FULLFILE}.backup@${_NOW:?"Missing NOW"}"
-    readonly _CIS_ROOT _CURRENT_FILE _CURRENT_FOLDER _CURRENT_FULLFILE _DEFINITIONS _DOMAIN _DEFINED_FULLFILE _NOW _SAVED_FULLFILE
+    local -r _DEFINED_FULLFILE="$(printSelectedDefinition "${_CIS_ROOT}" "${_DOMAIN}" "${_CURRENT_FULLFILE}")"
+    local -r _NOW="$(date +%Y%m%d_%H%M)"
+    local -r _SAVED_FULLFILE="${_CURRENT_FULLFILE}.backup@${_NOW:?"Missing NOW"}"
 
     [ -z "${_DEFINED_FULLFILE}" ] \
         && isCoreDefinition "${_CURRENT_FULLFILE}" \

@@ -9,9 +9,7 @@ source /cis/core/base.module.sh
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addNormalUser() {
-    local _USER
-    _USER="${1:?"Missing first parameter USER"}"
-    readonly _USER
+    local -r _USER="${1:?"Missing first parameter USER"}"
 
     #The user already exists
     id -u "${_USER}" &> /dev/null \

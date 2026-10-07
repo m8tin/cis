@@ -23,8 +23,7 @@ source /cis/core/base.module.sh
 
 
 function update_repositories() {
-    local _MODE="${1:-"--core"}"
-    readonly _MODE
+    local -r _MODE="${1:-"--core"}"
 
     [ "${_MODE}" == "--repair" ] \
         && (git -C "${CIS[ROOT]:?"Missing CISROOT"}" reset --hard origin/main; \

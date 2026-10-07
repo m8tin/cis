@@ -32,9 +32,7 @@ function checkGitIsAvailable() {
 }
 
 function checkPreconditions() {
-    local _DOMAIN
-    _DOMAIN="${1}" # Optional parameter DOMAIN
-    readonly _DOMAIN
+    local -r _DOMAIN="${1}" # Optional parameter DOMAIN
 
     ! [ -z "${_DOMAIN}" ] \
         && [ "$(hostname -d)" != "${_DOMAIN}" ] \
@@ -69,11 +67,9 @@ function checkPreconditions() {
 }
 
 function getOrSetDomain() {
-    local _CURRENT_DOMAIN _GIVEN_DOMAIN _OVERRIDE_DOMAIN_FILE
-    _CURRENT_DOMAIN="${CIS[DOMAIN]:?"Missing CIS_DOMAIN"}"
-    _GIVEN_DOMAIN="${1}" # Optional parameter DOMAIN
-    _OVERRIDE_DOMAIN_FILE="${CIS[ROOT]:?"Missing CIS_ROOT"}overrideOwnDomain"
-    readonly _CURRENT_DOMAIN _GIVEN_DOMAIN _OVERRIDE_DOMAIN_FILE
+    local -r _CURRENT_DOMAIN="${CIS[DOMAIN]:?"Missing CIS_DOMAIN"}"
+    local -r _GIVEN_DOMAIN="${1}" # Optional parameter DOMAIN
+    local -r _OVERRIDE_DOMAIN_FILE="${CIS[ROOT]:?"Missing CIS_ROOT"}overrideOwnDomain"
 
     ! [ -z "${_CURRENT_DOMAIN}" ] \
         && [ -z "${_GIVEN_DOMAIN}" ] \
@@ -104,9 +100,8 @@ function getOrSetDomain() {
 }
 
 function getRemoteRepositoryPath() {
-    local _REPOSITORY="$(git -C "${CIS[ROOT]:?"Missing CIS_ROOT"}" config --get remote.origin.url 2> /dev/null | grep -i 'git@')"
-    local _PATH="${_REPOSITORY%/*}"                        #Removes shortest matching pattern '/*' from the end
-    readonly _REPOSITORY _PATH
+    local -r _REPOSITORY="$(git -C "${CIS[ROOT]:?"Missing CIS_ROOT"}" config --get remote.origin.url 2> /dev/null | grep -i 'git@')"
+    local -r _PATH="${_REPOSITORY%/*}"                        #Removes shortest matching pattern '/*' from the end
 
     ! [ -z "${_PATH}" ] \
         && echo "${_PATH}/" \
@@ -116,9 +111,7 @@ function getRemoteRepositoryPath() {
 }
 
 function setSSLPermissions(){
-    local _SSLPATHS
-    _SSLPATHS="${CIS[DOMAINSTATES]}hosts/*/etc/ssl/domains/"
-    readonly _SSLPATHS
+    local -r _SSLPATHS="${CIS[DOMAINSTATES]}hosts/*/etc/ssl/domains/"
 
     addgroup --gid 775 ssl 2> /dev/null
     for _path in ${_SSLPATHS}; do
@@ -132,9 +125,7 @@ function setSSLPermissions(){
 }
 
 function addDefinition(){
-    local _REPOSITORY
-    _REPOSITORY="$(getRemoteRepositoryPath)cis-definition-${CIS[DOMAIN]}.git"
-    readonly _REPOSITORY
+    local -r _REPOSITORY="$(getRemoteRepositoryPath)cis-definition-${CIS[DOMAIN]}.git"
 
     [ "$(id -u)" == "0" ] \
         && echo \
@@ -154,9 +145,7 @@ function addDefinition(){
 }
 
 function addState() {
-    local _REPOSITORY
-    _REPOSITORY="$(getRemoteRepositoryPath)cis-state-${CIS[DOMAIN]}.git"
-    readonly _REPOSITORY
+    local -r _REPOSITORY="$(getRemoteRepositoryPath)cis-state-${CIS[DOMAIN]}.git"
 
     [ "$(id -u)" == "0" ] \
         && echo \
@@ -178,9 +167,7 @@ function addState() {
 }
 
 function setupCoreFunctionality() {
-    local _MINUTE_FROM_OWN_IP
-    _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F '.' | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
-    readonly _MINUTE_FROM_OWN_IP
+    local -r _MINUTE_FROM_OWN_IP="$(hostname -I | xargs -n 1 | grep -F '.' | head -n 1 | cut -d. -f4 || echo 0)" #uses last value from first own ipv4 or 0 as minute value
 
     [ "$(id -u)" != "0" ] \
         && echo \
@@ -208,8 +195,7 @@ function setupCoreFunctionality() {
 }
 
 function setup() {
-    local _DOMAIN="$(getOrSetDomain "${1}")"
-    readonly _DOMAIN
+    local -r _DOMAIN="$(getOrSetDomain "${1}")"
 
     ! checkPreconditions "${_DOMAIN}" \
         && return 1

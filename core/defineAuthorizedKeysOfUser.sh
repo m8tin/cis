@@ -7,11 +7,9 @@ source /cis/core/base.module.sh
 
 
 function prepareFolder() {
-    local _HOME_FOLDER _SSH_FOLDER _USER
-    _SSH_FOLDER="${1:?"prepareFolder(): Missing parameter SSH_PATH"}"
-    _HOME_FOLDER="${_SSH_FOLDER%%/.ssh*}"  #Removes longest matching pattern '/.ssh*' from the end
-    _USER="${_HOME_FOLDER##*/}"            #Removes longest matching pattern '*/'     from the begin
-    readonly _HOME_FOLDER _SSH_FOLDER _USER
+    local -r _SSH_FOLDER="${1:?"prepareFolder(): Missing parameter SSH_PATH"}"
+    local -r _HOME_FOLDER="${_SSH_FOLDER%%/.ssh*}"  #Removes longest matching pattern '/.ssh*' from the end
+    local -r _USER="${_HOME_FOLDER##*/}"            #Removes longest matching pattern '*/'     from the begin
 
     ! id "${_USER}" &> /dev/null \
         && echo "FAIL: The given user does not exist:               ("$(readlink -f ${0})")" \
@@ -67,10 +65,8 @@ function prepareFolder() {
 }
 
 function ensureGroupMembership() {
-    local _SSH_GROUP _USER
-    _SSH_GROUP="ssh_login"
-    _USER="${1:?"ensureGroupMembership(): Missing first parameter USER"}"
-    readonly _SSH_GROUP _USER
+    local -r _SSH_GROUP="ssh_login"
+    local -r _USER="${1:?"ensureGroupMembership(): Missing first parameter USER"}"
 
     ! id "${_USER}" &> /dev/null \
         && echo "FAIL: The given user does not exist:               ("$(readlink -f ${0})")" \
@@ -107,17 +103,16 @@ function ensureGroupMembership() {
 }
 
 function defineAuthorizedKeysOfUser() {
-    local _CIS_ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
-    _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")"
-    _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
-    _DOMAIN="${_DEFINITIONS##*/definitions/}"     #Removes longest  matching pattern '*/definitions/' from the begin
-    _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
+    local _DEFINITIONS="$(realpath -s "${1:?"Missing first parameter DEFINITIONS: 'ROOT/definitions/DOMAIN'"}")"
+    local -r _CIS_ROOT="${_DEFINITIONS%%/definitions/*}/"  #Removes longest  matching pattern '/definitions/*' from the end
+    local _DOMAIN="${_DEFINITIONS##*/definitions/}"        #Removes longest  matching pattern '*/definitions/' from the begin
+    readonly _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
     #Build from components for safety
-    _DEFINITIONS="${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
+    readonly _DEFINITIONS="${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
 
-    _USER="${2:?"Missing second parameter USER"}"
-    _CORE_SCRIPTS="${_CIS_ROOT:?"Missing ROOT"}core/"
-    readonly _CIS_ROOT _CORE_SCRIPTS _DOMAIN _DEFINITIONS _USER
+
+    local -r _USER="${2:?"Missing second parameter USER"}"
+    local -r _CORE_SCRIPTS="${_CIS_ROOT:?"Missing ROOT"}core/"
 
     case "${_USER:?"Missing USER"}" in
         root)

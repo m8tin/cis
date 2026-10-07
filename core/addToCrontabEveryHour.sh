@@ -9,10 +9,8 @@ source /cis/core/base.module.sh
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addToCrontabEveryHour() {
-    local _MINUTE_VALUE _STRING
-    ! [ -z "${2##*[!0-9]*}" ] && _MINUTE_VALUE=$((${2}%60)) # if second parameter is integer then (minute-value % 60) as safe guard
-    _STRING="${_MINUTE_VALUE:?"Missing MINUTE_VALUE"} * * * * ${1:?"Missing first parameter COMMAND"} > /dev/null 2>&1"
-    readonly _MINUTE_VALUE _STRING
+    ! [ -z "${2##*[!0-9]*}" ] && local -r _MINUTE_VALUE=$((${2}%60)) # if second parameter is integer then (minute-value % 60) as safe guard
+    local -r _STRING="${_MINUTE_VALUE:?"Missing MINUTE_VALUE"} * * * * ${1:?"Missing first parameter COMMAND"} > /dev/null 2>&1"
 
     [ "$(id -u)" == "0" ] \
         && crontab -l | grep -qF "${_STRING:?"Missing CRON_STRING"}" \

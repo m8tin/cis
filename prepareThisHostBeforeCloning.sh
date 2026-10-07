@@ -6,11 +6,12 @@
     && exit 1
 
 function goOn() {
-    local _QUESTION="${1:?"goOn(): Mising first parameter QUESTION"}"
-    local _TIPP="${2}"
+    local -r _QUESTION="${1:?"goOn(): Mising first parameter QUESTION"}"
+    local -r _TIPP="${2}"
     local _ANSWER
 
     read -p "${_QUESTION}: [y]es or [n]o : " _ANSWER
+    readonly _ANSWER
     [ "${_ANSWER}" == "y" ] && return 0
     [ "${_ANSWER}" == "Y" ] && return 0
     [ "${_ANSWER}" == "yes" ] && return 0
@@ -18,13 +19,13 @@ function goOn() {
     [ "${_ANSWER}" == "YES" ] && return 0
 
     echo
-    echo "${_TIPP}"
+    [ -n "${_TIPP}" ] && echo "${_TIPP}"
     echo
     return 1
 }
 
 function setNeededHostnameOrExit() {
-    _FQDN="${1}"
+    local -r _FQDN="${1}"
 
     [ -z "${_FQDN}" ] \
         && ! echo "$(hostname -b)" | grep -q -F '.' \
@@ -55,8 +56,8 @@ function setNeededHostnameOrExit() {
 function printOrGenerateSSHKeys() {
     git --version > /dev/null || (apt update; apt upgrade -y; apt install git)
 
-    local _FULL_USERNAME="$(whoami)@$(hostname -b)"
-    local _PUBKEY_FILE=~/.ssh/id_ed25519.pub
+    local -r _FULL_USERNAME="$(whoami)@$(hostname -b)"
+    local -r _PUBKEY_FILE=~/.ssh/id_ed25519.pub
 
     echo
     echo "Printing public SSH-Key of ${_FULL_USERNAME}:"

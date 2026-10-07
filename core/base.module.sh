@@ -396,51 +396,47 @@ function base.printWithColor() {
 }
 
 function base.set() {
-    local _CLEAN_VARNAME _MODE _REGEX _VALUE _VARNAME
-    _VARNAME="${1:?"base.set(): Missing first parameter VARNAME"}"
-    _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
-    _VALUE="${2}"
-    _REGEX="${3:?"base.set(): Missing third parameter REGEX"}"
-    _MODE="${4}"
-    readonly _CLEAN_VARNAME _MODE _REGEX _VALUE _VARNAME
+    local -r _base_set_VARNAME="${1:?"base.set(): Missing first parameter VARNAME"}"
+    local -r _base_set_CLEAN_VARNAME="${_base_set_VARNAME//[^a-zA-Z0-9_]/}"
+    local -r _base_set_VALUE="${2}"
+    local -r _base_set_REGEX="${3:?"base.set(): Missing third parameter REGEX"}"
+    local -r _base_set_MODE="${4}"
 
-    [ "${_VARNAME}" != "${_CLEAN_VARNAME}" ] \
-        && echo "FAILURE - base.set(): Invalid name of variable: ${_VARNAME}" >&2 \
+    [ "${_base_set_VARNAME}" != "${_base_set_CLEAN_VARNAME}" ] \
+        && echo "FAILURE - base.set(): Invalid name of variable: ${_base_set_VARNAME}" >&2 \
         && exit 1
 
-    [ -z "${_VALUE}" ] \
-        && [ "${_MODE}" == 'optional' ] \
-        && readonly "${_CLEAN_VARNAME}" \
+    [ -z "${_base_set_VALUE}" ] \
+        && [ "${_base_set_MODE}" == 'optional' ] \
+        && readonly "${_base_set_CLEAN_VARNAME}" \
         && return 0
 
-    # Sets the value to a global variable with name $_VARNAME
-    [[ "${_VALUE}" =~ ^(${_REGEX})$ ]] \
-        && printf -v "${_CLEAN_VARNAME}" -- "%s" "${_VALUE}" \
-        && readonly "${_CLEAN_VARNAME}" \
+    # Sets the value to a global variable with name $_base_set_VARNAME
+    [[ "${_base_set_VALUE}" =~ ^(${_base_set_REGEX})$ ]] \
+        && printf -v "${_base_set_CLEAN_VARNAME}" -- "%s" "${_base_set_VALUE}" \
+        && readonly "${_base_set_CLEAN_VARNAME}" \
         && return 0
 
-    printf -- '%s\n' "FAILURE: - base.set(): Unable to set variable '${_VARNAME}' to value '${_VALUE}', validation failed: '${_REGEX}'" >&2
+    printf -- '%s\n' "FAILURE: - base.set(): Unable to set variable '${_base_set_VARNAME}' to value '${_base_set_VALUE}', validation failed: '${_REGEX}'" >&2
     exit 1
 }
 
 function base.setFromFile() {
-    local _CLEAN_VARNAME _FILENAME _VARNAME
-    _VARNAME="${1:?"base.setFromFile(): Missing first parameter VARNAME"}"
-    _CLEAN_VARNAME="${_VARNAME//[^a-zA-Z0-9_]/}"
-    _FILENAME="${2:?"base.serFromFile(): Missing second parameter FILENAME"}"
-    readonly _CLEAN_VARNAME _FILENAME _VARNAME
+    local -r _base_setFromFile_VARNAME="${1:?"base.setFromFile(): Missing first parameter VARNAME"}"
+    local -r _base_setFromFile_CLEAN_VARNAME="${_base_setFromFile_VARNAME//[^a-zA-Z0-9_]/}"
+    local -r _base_setFromFile_FILENAME="${2:?"base.serFromFile(): Missing second parameter FILENAME"}"
 
-    [ "${_VARNAME}" != "${_CLEAN_VARNAME}" ] \
-        && echo "FAILURE - base.setFromFile(): Invalid name of variable: ${_VARNAME}" >&2 \
+    [ "${_base_setFromFile_VARNAME}" != "${_base_setFromFile_CLEAN_VARNAME}" ] \
+        && echo "FAILURE - base.setFromFile(): Invalid name of variable: ${_base_setFromFile_VARNAME}" >&2 \
         && exit 1
 
-    local _LINE=$(grep -m 1 -oE "^[[:blank:]]*${_CLEAN_VARNAME}=[^[:blank:]]+.*" "${_FILENAME}" 2> /dev/null) \
+    local _LINE=$(grep -m 1 -oE "^[[:blank:]]*${_base_setFromFile_CLEAN_VARNAME}=[^[:blank:]]+.*" "${_base_setFromFile_FILENAME}" 2> /dev/null) \
         && [ -n "${_LINE}" ] \
-        && printf -v "${_CLEAN_VARNAME}" -- "%s" "${_LINE#*=}" \
-        && readonly "${_CLEAN_VARNAME}" \
+        && printf -v "${_base_setFromFile_CLEAN_VARNAME}" -- "%s" "${_LINE#*=}" \
+        && readonly "${_base_setFromFile_CLEAN_VARNAME}" \
         && return 0
 
-    printf -- '%s\n' "FAILURE: - base.setFromFile(): Unable to set variable '${_VARNAME}' from file '${_FILENAME}', value not found." >&2
+    printf -- '%s\n' "FAILURE: - base.setFromFile(): Unable to set variable '${_base_setFromFile_VARNAME}' from file '${_base_setFromFile_FILENAME}', value not found." >&2
     exit 1
 }
 

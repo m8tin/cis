@@ -27,10 +27,8 @@ function checkPermissions() {
 }
 
 function cloneOrPull() {
-    local _FOLDER _REPOSITORY
-    _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _REPOSITORY="${2:?"Missing second parameter REPOSITORY"}"
-    readonly _FOLDER _REPOSITORY
+    local -r _FOLDER="${1:?"Missing first parameter FOLDER"}"
+    local -r _REPOSITORY="${2:?"Missing second parameter REPOSITORY"}"
 
     [ -d "${_FOLDER}.git" ] \
         && git -C "${_FOLDER}" pull &> /dev/null \
@@ -47,11 +45,9 @@ function cloneOrPull() {
 }
 
 function printRepository() {
-    local _FOLDER _CONFIGURED_REPOSITORY _SUGGESTED_REPOSITORY
-    _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _CONFIGURED_REPOSITORY="$(git -C "${_FOLDER:?"Missing FOLDER"}" config --get remote.origin.url 2> /dev/null)"
-    _SUGGESTED_REPOSITORY="${2}"
-    readonly _FOLDER _CONFIGURED_REPOSITORY _SUGGESTED_REPOSITORY
+    local -r _FOLDER="${1:?"Missing first parameter FOLDER"}"
+    local -r _CONFIGURED_REPOSITORY="$(git -C "${_FOLDER:?"Missing FOLDER"}" config --get remote.origin.url 2> /dev/null)"
+    local -r _SUGGESTED_REPOSITORY="${2}"
 
     ! [ -z "${_CONFIGURED_REPOSITORY}" ] \
         && echo "${_CONFIGURED_REPOSITORY}" \
@@ -74,11 +70,9 @@ function printRepository() {
 # Note that an unprivileged user can use this script successfully,
 # if no user has to be added to the host because it already exists.
 function addAndCheckGitRepository() {
-    local _FOLDER _REPOSITORY _RIGHTS
-    _FOLDER="${1:?"Missing first parameter FOLDER"}"
-    _RIGHTS="${2:?"Missing second parameter RIGHTS: (readonly, writable) "}"
-    _REPOSITORY="$(printRepository "${_FOLDER}" "${3}")"
-    readonly _FOLDER _REPOSITORY _RIGHTS
+    local -r _FOLDER="${1:?"Missing first parameter FOLDER"}"
+    local -r _RIGHTS="${2:?"Missing second parameter RIGHTS: (readonly, writable) "}"
+    local -r _REPOSITORY="$(printRepository "${_FOLDER}" "${3}")"
 
     echo \
         && cloneOrPull "${_FOLDER}" "${_REPOSITORY:?"Missing REPOSITORY: e.g. ssh://git@your.domain.com/cis.git"}" \
