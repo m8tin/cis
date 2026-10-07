@@ -15,12 +15,11 @@
 
 
 function base.checkAllInputParameters() {
-    local _ALLOWED_CHARS _ARG _SUCCESS
     # Global whitelist for all start-parameters ($1, $2, ...)
-    _ALLOWED_CHARS='-[:alnum:]@/_.:'
-    readonly _ALLOWED_CHARS
+    local -r _ALLOWED_CHARS='-[:alnum:]@/_.:'
 
-    _SUCCESS="true"
+    local _ARG
+    local _SUCCESS="true"
     for _ARG in "${@}"; do
         if [ -n "${_ARG}" ]; then
             # Has to start with an alphanumeric char '--', '/' or '@'
@@ -69,24 +68,27 @@ function prepare.setCIS() {
         && base.abort "Array CIS was not initialized correctly."
 
     # Retrieves the variables for this module using 'BASH_SOURCE[0]', the infos about the script using '$0'.
-    local _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME _CIS_ROOT
-    _FULLBASENAME="$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)"
-    _FULLSCRIPTNAME="$(realpath "${0}" 2> /dev/null)"
+    local -r _FULLBASENAME="$(realpath "${BASH_SOURCE[0]}" 2> /dev/null)"
+    local -r _FULLSCRIPTNAME="$(realpath "${0}" 2> /dev/null)"
+
+    local _CIS_ROOT
 
     # Folders always ends with an tailing '/'
-    _ROOT_TRUNK="${_FULLSCRIPTNAME%cis/*}"
+    local _ROOT_TRUNK="${_FULLSCRIPTNAME%cis/*}"
     while true; do
         # Because we tried to cut the pattern 'cis/*', but nothing happened we know the pattern was not found.
         # So we can not derive root of cis from the script, but we can fall back to the module's own location.
         [ "${_FULLSCRIPTNAME}" == "${_ROOT_TRUNK}" ] \
             && _CIS_ROOT="${_FULLBASENAME%/*}/" \
-            && _CIS_ROOT="${_CIS_ROOT%core/*}" \
+            && readonly _CIS_ROOT="${_CIS_ROOT%core/*}" \
+            && readonly _ROOT_TRUNK \
             && break
 
         [ -d "${_ROOT_TRUNK}cis/core/" ] \
             && [ -d "${_ROOT_TRUNK}cis/definitions/" ] \
             && [ -d "${_ROOT_TRUNK}cis/states/" ] \
-            && _CIS_ROOT="${_ROOT_TRUNK}cis/" \
+            && readonly _CIS_ROOT="${_ROOT_TRUNK}cis/" \
+            && readonly _ROOT_TRUNK \
             && break
 
         [ "${_ROOT_TRUNK}" == '/' ] \
@@ -94,7 +96,6 @@ function prepare.setCIS() {
 
         _ROOT_TRUNK="${_ROOT_TRUNK%cis/*}"
     done
-    readonly _ROOT_TRUNK _FULLBASENAME _FULLSCRIPTNAME _CIS_ROOT
 
     CIS[ROOT]="${_CIS_ROOT}"
     CIS[DOMAIN]="$(base.printOwnDomain "${CIS[ROOT]:?"Missing global CIS_ROOT"}")"
@@ -115,6 +116,16 @@ function prepare.setCIS() {
     CIS[HOME]="${HOME:-"/root"}/"
     CIS[HOST]="$(hostname -b)"
     CIS[USER]="$(whoami)"
+
+    # Sets interactive, if stdin is bound to tty.
+    [ -t 0 ] \
+        && CIS[INTERACTIVE]=true \
+        || CIS[INTERACTIVE]=false
+
+    # Sets colorize, if stderr is bound to tty.
+    [ -t 2 ] \
+        && CIS[COLORIZE]=true \
+        || CIS[COLORIZE]=false
 
     # Ensures each user is allowed to create 'his' folder.
     CIS[LOGDIR]="/tmp/${CIS[USER]:-"UNKNOWN"}/cis/"
@@ -169,9 +180,7 @@ function prepare.setCOLOR() {
 }
 
 function prepare.setPATH() {
-    local _GREP_PATH
-    _GREP_PATH="${1:?"Missing parameter GREP_PATH"}"
-    readonly _GREP_PATH
+    local -r _GREP_PATH="${1:?"Missing parameter GREP_PATH"}"
     # Fixes the paths, ...
     if [ -x ${_GREP_PATH} ]; then
         echo ":${PATH}:" | ${_GREP_PATH} -q ":/bin:" || export PATH="${PATH}:/bin" 2> /dev/null
@@ -242,9 +251,7 @@ function base.abort() {
 }
 
 function base.filterComments() {
-    local _FILENAME
-    _FILENAME="${1:?"base.filterComments() Missing first parameter FILENAME"}"
-    readonly _FILENAME
+    local -r _FILENAME="${1:?"base.filterComments() Missing first parameter FILENAME"}"
 
     # Filters comments (# und ;) and empty lines, retuns the remaining content...
     grep -o "^[[:blank:]]*[^[:blank:]#;].\+$" "${_FILENAME}" \
@@ -254,10 +261,8 @@ function base.filterComments() {
 }
 
 function base.loadModule() {
-    local _MODULENAME _MODULEFULLNAME
-    _MODULENAME="${1:?"Function base.loadModule(): Missing parameter MODULENAME."}"
-    _MODULEFULLNAME="${CIS[MODULEROOT]:?"Function base.loadModule(): Missing CIS_MODULEROOT."}${_MODULENAME}.module.sh"
-    readonly _MODULENAME _MODULEFULLNAME
+    local -r _MODULENAME="${1:?"Function base.loadModule(): Missing parameter MODULENAME."}"
+    local -r _MODULEFULLNAME="${CIS[MODULEROOT]:?"Function base.loadModule(): Missing CIS_MODULEROOT."}${_MODULENAME}.module.sh"
 
     #module already is loaded => return
     declare -f "module.${_MODULENAME}" > /dev/null 2>&1 \
@@ -323,9 +328,7 @@ function base.printEnvironment() {
 }
 
 function base.printModuleFunctions() {
-    local _MODULENAME
-    _MODULENAME="${1:?"Function base.printModuleFunctions(): Missing parameter MODULENAME."}"
-    readonly _MODULENAME
+    local -r _MODULENAME="${1:?"Function base.printModuleFunctions(): Missing parameter MODULENAME."}"
 
     [ "${_MODULENAME}" = "base" ] \
         && declare -f $(declare -F | grep "${_MODULENAME}." | cut -d" " -f3) \
@@ -340,20 +343,14 @@ function base.printModuleFunctions() {
 }
 
 function base.printOwnDomain() {
-    local _CIS_ROOT _OVERRIDE_DOMAIN_FILE
-    _CIS_ROOT="${1:?"base.printOwnDomain(): Missing first parameter CIS_ROOT."}"
-    _OVERRIDE_DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
-    readonly _CIS_ROOT _OVERRIDE_DOMAIN_FILE
-
-    local _BOOT_DOMAIN _OVERRIDE_DOMAIN
+    local -r _CIS_ROOT="${1:?"base.printOwnDomain(): Missing first parameter CIS_ROOT."}"
+    local -r _OVERRIDE_DOMAIN_FILE="${_CIS_ROOT:?"Missing CIS_ROOT"}overrideOwnDomain"
 
     # There has to be one dot at least.
-    _BOOT_DOMAIN="$(hostname -b | grep -F '.' | cut -d. -f2-)"
+    local -r _BOOT_DOMAIN="$(hostname -b | grep -F '.' | cut -d. -f2-)"
 
     # Take OVERRIDING_DOMAIN_FILE without empty lines and comments, then take the first line without leading spaces
-    _OVERRIDE_DOMAIN="$(grep -vE '^[[:space:]]*$|^[[:space:]]*#' "${_OVERRIDE_DOMAIN_FILE}" 2> /dev/null | head -n 1 | xargs)"
-
-    readonly _BOOT_DOMAIN _OVERRIDE_DOMAIN
+    local -r _OVERRIDE_DOMAIN="$(grep -vE '^[[:space:]]*$|^[[:space:]]*#' "${_OVERRIDE_DOMAIN_FILE}" 2> /dev/null | head -n 1 | xargs)"
 
     [ -n "${_OVERRIDE_DOMAIN}" ] \
         && [ "${_OVERRIDE_DOMAIN}" != "${_BOOT_DOMAIN}" ] \
@@ -370,29 +367,24 @@ function base.printOwnDomain() {
 }
 
 function base.printWithColor() {
-    local _COLOR _COLOR_KEY _MESSAGE _NO_COLOR
-    _COLOR_KEY="${1:?"base.printWithColor(): Missing first parameter COLOR."}"
-    # It printing target is a terminal which supports more than 8 colors.
-    if [ -t 1 ] \
-        && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ] \
-        && [[ "$(declare -p COLOR 2>/dev/null)" == "declare -A"* ]] \
-        && [ -n "${COLOR[${_COLOR_KEY}]}" ]
-    then
-        _COLOR="${COLOR[${_COLOR_KEY}]}"
-        _NO_COLOR="${COLOR[NO]}"
-    fi
+    local -r _COLOR_KEY="${1:?"base.printWithColor(): Missing first parameter COLOR."}"
     shift
     if [ $# -gt 0 ]; then
-        _MESSAGE="$*"
+        local -r _MESSAGE="${*}"
     elif [ ! -t 0 ]; then
         # Read from stdin, if there is something in the pipe only.
-        _MESSAGE=$(cat)
+        local -r _MESSAGE=$(cat)
     fi
 
-    printf -- "%b%b%b" "${_COLOR:-""}" "${_MESSAGE}" "${_NO_COLOR:-""}" \
-        && return 0
-
-    return 1
+    # It printing target is a terminal which supports more than 8 colors.
+    if [ "${CIS[COLORIZE]}" == "true" ] \
+            && [ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ] \
+            && [[ "$(declare -p COLOR 2>/dev/null)" == "declare -A"* ]] \
+            && [ -n "${COLOR[${_COLOR_KEY}]}" ]; then
+        printf -- "%b%b%b" "${COLOR[${_COLOR_KEY}]}" "${_MESSAGE}" "${COLOR[NO]}"
+    else
+        printf -- "%b" "${_MESSAGE}"
+    fi
 }
 
 function base.set() {
@@ -441,9 +433,7 @@ function base.setFromFile() {
 }
 
 function base.explain() {
-    local _MODULE_PREFIX
-    _MODULE_PREFIX="${1:?"base.explain(): Missing first parameter MODULE_PREFIX"}"
-    readonly _MODULE_PREFIX
+    local -r _MODULE_PREFIX="${1:?"base.explain(): Missing first parameter MODULE_PREFIX"}"
 
     [ -z "${2}" ] \
         && echo "Then you can use these functions provided by this module inside your script:" \
