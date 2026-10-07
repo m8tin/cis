@@ -77,7 +77,13 @@ function ensureGroupMembership() {
         && echo "  - '${_USER}'" \
         && return 1
 
-    ! getent group | cut -d: -f1 | grep -qF "${_SSH_GROUP}" \
+    id -nG "${_USER}" | grep -qF "${_SSH_GROUP}" \
+        && echo "SUCCESS: Group exists and user is member already:  ("$(readlink -f ${0})")" \
+        && echo "  - Group: '${_SSH_GROUP}'" \
+        && echo "  - User:  '${_USER}'" \
+        && return 0
+
+    ! getent group "${_SSH_GROUP}" &> /dev/null \
         && addgroup --system --quiet "${_SSH_GROUP}" \
         && adduser --quiet "${_USER}" "${_SSH_GROUP}" \
         && echo "SUCCESS: Group was created and user was added:     ("$(readlink -f ${0})")" \
@@ -86,7 +92,7 @@ function ensureGroupMembership() {
         && return 0
 
     # Ensure the group exists then add user
-    getent group | cut -d: -f1 | grep -qF "${_SSH_GROUP}" \
+    getent group "${_SSH_GROUP}" &> /dev/null \
         && adduser --quiet "${_USER}" "${_SSH_GROUP}" \
         && echo "SUCCESS: Group already exists and user was added:  ("$(readlink -f ${0})")" \
         && echo "  - Group: '${_SSH_GROUP}'" \
