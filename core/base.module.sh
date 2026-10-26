@@ -296,18 +296,51 @@ function base.loadModule() {
 }
 
 function base.log() {
-    local _LOGLEVEL _LOGLEVEL_UPPER
-    base.set _LOGLEVEL "${1}" '^(error|warn|info|debug)$'
-    _LOGLEVEL_UPPER="${_LOGLEVEL:?"base.log(): Missing valid first parameter LOGLEVEL"}"
-    _LOGLEVEL_UPPER="${_LOGLEVEL_UPPER^^}"
-    readonly _LOGLEVEL_UPPER
+    local _LOGMODE; base.set _LOGMODE "${1}" '^(line|string)$'
+    shift
+    local _LOGLEVEL; base.set _LOGLEVEL "${1}" '^(error|warn|info|debug)$'
+    shift
+    local -r _MESSAGE="${*}"
 
-    case "${CIS[LOGLEVEL]:-warn}" in
-        debug) [ "${_LOGLEVEL_UPPER}" = "DEBUG" ] && echo "[${_LOGLEVEL_UPPER}] $(date +%H:%M:%S) - ${2}" >&2 ;& # Forces execution to continue in the next block
-        info)  [ "${_LOGLEVEL_UPPER}" = "INFO"  ] && echo "[${_LOGLEVEL_UPPER}] $(date +%H:%M:%S) - ${2}" >&2 ;&
-        warn)  [ "${_LOGLEVEL_UPPER}" = "WARN"  ] && echo "[${_LOGLEVEL_UPPER}] $(date +%H:%M:%S) - ${2}" >&2 ;&
-        error) [ "${_LOGLEVEL_UPPER}" = "ERROR" ] && echo "[${_LOGLEVEL_UPPER}] $(date +%H:%M:%S) - ${2}" >&2 ;;
-    esac
+    if [ "${_LOGMODE}" == "line" ]; then
+        if [ "${CIS[INTERACTIVE]}" == true ]; then
+            if [ "${CIS[COLORIZE]}" == true ]; then
+                # TODO color
+                case "${CIS[LOGLEVEL]:-warn}" in
+                    debug) [ "${_LOGLEVEL}" = "debug" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;& # Forces execution to continue in the next block
+                    info)  [ "${_LOGLEVEL}" = "info" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    warn)  [ "${_LOGLEVEL}" = "warn" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    error) [ "${_LOGLEVEL}" = "error" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;;
+                esac
+            else
+                case "${CIS[LOGLEVEL]:-warn}" in
+                    debug) [ "${_LOGLEVEL}" = "debug" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;& # Forces execution to continue in the next block
+                    info)  [ "${_LOGLEVEL}" = "info" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    warn)  [ "${_LOGLEVEL}" = "warn" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    error) [ "${_LOGLEVEL}" = "error" ] && printf -- "%s - %s\n" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;;
+                esac
+            fi
+        fi
+    else
+        if [ "${CIS[INTERACTIVE]}" == true ]; then
+            if [ "${CIS[COLORIZE]}" == true ]; then
+                # TODO color
+                case "${CIS[LOGLEVEL]:-warn}" in
+                    debug) [ "${_LOGLEVEL}" = "debug" ] && printf -- "%s - %s" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;& # Forces execution to continue in the next block
+                    info)  [ "${_LOGLEVEL}" = "info" ] && printf -- "%s - %s" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    warn)  [ "${_LOGLEVEL}" = "warn" ] && printf -- "%s - %s" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    error) [ "${_LOGLEVEL}" = "error" ] && printf -- "%s - %s" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;;
+                esac
+            else
+                case "${CIS[LOGLEVEL]:-warn}" in
+                    debug) [ "${_LOGLEVEL}" = "debug" ] && printf -- "%s - %s" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;& # Forces execution to continue in the next block
+                    info)  [ "${_LOGLEVEL}" = "info" ] && printf -- "%s - %s" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    warn)  [ "${_LOGLEVEL}" = "warn" ] && printf -- "%s - %s" "[${_LOGLEVEL^^} ] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;&
+                    error) [ "${_LOGLEVEL}" = "error" ] && printf -- "%s - %s" "[${_LOGLEVEL^^}] $(date +%H:%M:%S)" "${_MESSAGE}" >&2 ;;
+                esac
+            fi
+        fi
+    fi
 }
 
 function base.printEnvironment() {
@@ -487,5 +520,5 @@ else
         && base.checkScriptforCorrectAssignments \
         || base.abort "The necessary preparations have failed."
 
-    base.log debug "Module '${BASH_SOURCE[0]}' loaded by script: ${0}"
+    base.log line debug "Module '${BASH_SOURCE[0]}' loaded by script: ${0}"
 fi
