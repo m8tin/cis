@@ -16,6 +16,23 @@ hostnamectl set-hostname check.local
 timedatectl set-timezone Europe/Berlin
 ```
 
+#### 1.1) IPv6 ausschalten
+
+nano /etc/netplan/50-cloud-init.yaml
+
+```sh
+network:
+    version: 2
+    wifis:
+        renderer: networkd
+        wlan0:
+            dhcp4: true
+            dhcp6: false           # Deaktiviert DHCP fuer IPv6
+            accept-ra: false       # Deaktiviert den Empfang von IPv6 Router Advertisements
+            link-local: [ ipv4 ]   # Aktiviert Link-Local nur fuer IPv4, schaltet IPv6-LL ab
+...
+```
+
 
 
 ### 2.) Install minimal GUI and Tools.
