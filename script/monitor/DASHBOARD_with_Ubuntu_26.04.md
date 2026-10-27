@@ -119,6 +119,12 @@ while true; do
     # Starts Firefox in mode kiosk. (The instruction pointer keeps moving after Firefox has closed.)
     snap run firefox -fullscreen -kiosk -url http://monitor.everbrent.net/check.html
 
+    # Or cromium 'apt install chromium-browser'
+    # chromium-browser \
+    #     --kiosk --no-first-run --noerrdialogs \
+    #     --disable-infobars --disable-background-timer-throttling \
+    #   "http://monitor.everbrent.net/check.html"
+
     # In case of a crash wait 5 seconds and restart
     sleep 5
 done
