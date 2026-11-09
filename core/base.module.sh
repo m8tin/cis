@@ -420,6 +420,63 @@ function base.printWithColor() {
     fi
 }
 
+function base.readArguments() {
+    if [[ ${#EXPECTED_ARGS[@]} -lt 1 ]]; then
+        printf -- 'Development-Error: missing array EXPECTED_ARGS having at least one value!\n'
+        printf -- '  declare -A EXPECTED_ARGS=(\n'
+        printf -- '      ["--host"]="target hostname (e.g. test.demo.net)::^[a-zA-Z0-9.-]+$"\n'
+        printf -- '      ["--number"]="an integer value::^[0-9]+$"\n'
+        printf -- '      ["--allowSomething"]="enable a feature (--allowSomething [true|false])::^(true|false)$"\n'
+        printf -- '  )\n'
+        exit 1
+    fi
+
+    declare -gA ARGS
+    while [ $# -gt 0 ]; do
+        # 1. Direkter Check: Ist das aktuelle Argument $1 als Schlüssel in ARG_REGEX definiert?
+        local config="${EXPECTED_ARGS[${1}]}"
+        local regex="${config##*::}"       # Alles NACH dem letzten '::'
+        if [[ -n "${config}" && -n "${regex}" && "${config}" != "${regex}" ]]; then
+            # Prüfen, ob ein expliziter Wert übergeben wurde
+            if [ -n "${2}" ] && [ "${2}" != -* ]; then
+                local value="${2}"
+                local shift_steps=2
+            else
+                local value="true"
+                local shift_steps=1
+            fi
+
+            if [[ "$value" =~ $regex ]]; then
+                # Key für das ARGS-Array aufbereiten (z.B. "--allow-Something" -> "ALLOW_SOMETHING")
+                local key="${1#--}"
+                key="${key^^}"
+                key="${key//-/_}"
+
+                ARGS[${key}]="${value}"
+            else
+                echo "Warning: value '${value}' of '${1}' is invalid."
+                ARGS[${key}]=""
+            fi
+
+            shift ${shift_steps}
+        elif [[ -n "${config}" && ( -z "${regex}" || "${config}" == "${regex}" ) ]]; then
+            printf -- "Development-Error: no regex in array EXPECTED_ARGS defined for '${1}' (missing '::')!\n"
+        else
+            printf -- "\nUsage: ${0##*/} [OPTIONS]\n"
+            printf -- "Options:\n"
+
+            # Da assoziative Arrays keine feste Reihenfolge haben, sortieren wir die Keys alphabetisch
+            local -r sorted_flags=($(for f in "${!EXPECTED_ARGS[@]}"; do echo "${f}"; done | sort))
+            for flag in "${sorted_flags[@]}"; do
+                config="${EXPECTED_ARGS[${flag}]}"
+                local help_text="${config%::*}"    # Alles VOR dem letzten '::'
+                printf -- "  %-22s %s\n" "${flag}" "${help_text}"
+            done
+            exit 1
+        fi
+    done
+}
+
 function base.set() {
     local -r _base_set_VARNAME="${1:?"base.set(): Missing first parameter VARNAME"}"
     local -r _base_set_CLEAN_VARNAME="${_base_set_VARNAME//[^a-zA-Z0-9_]/}"

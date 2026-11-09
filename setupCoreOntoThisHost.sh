@@ -212,9 +212,11 @@ function setup() {
 
 
 
-# Parameter 1: only alphanumeric characters are allowed and [.-] if not leading (due to: -oProxyCommand=...).
-base.set DOMAIN "${1}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
-setup "${DOMAIN}" \
+declare -A EXPECTED_ARGS=(
+    ["--domain"]="optional custom domain for definitions (e.g. 'example.net', if it differs from this host's domain)::^[a-zA-Z0-9][a-zA-Z0-9.-]*$"
+)
+base.readArguments "${@}"
+setup "${ARGS[DOMAIN]}" \
     && exit 0
 
 exit 1
