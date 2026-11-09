@@ -1,4 +1,3 @@
-
 How to setup a monitoring dashboard
 ===================================
 
