@@ -433,7 +433,7 @@ function base.readArguments() {
 
     declare -gA ARGS
     while [ $# -gt 0 ]; do
-        # 1. Direkter Check: Ist das aktuelle Argument $1 als Schlüssel in ARG_REGEX definiert?
+        # Ist das aktuelle Argument in ${1} als Schlüssel in EXPECTED_ARGS definiert?
         local config="${EXPECTED_ARGS[${1}]}"
         local regex="${config##*::}"       # Alles NACH dem letzten '::'
         if [[ -n "${config}" && -n "${regex}" && "${config}" != "${regex}" ]]; then
@@ -446,12 +446,13 @@ function base.readArguments() {
                 local shift_steps=1
             fi
 
-            if [[ "$value" =~ $regex ]]; then
-                # Key für das ARGS-Array aufbereiten (z.B. "--allow-Something" -> "ALLOW_SOMETHING")
-                local key="${1#--}"
-                key="${key^^}"
-                key="${key//-/_}"
+            # Key für das ARGS-Array aufbereiten (z.B. "--allow-Something" -> "ALLOW_SOMETHING")
+            local key="${1#--}"
+            key="${key^^}"
+            key="${key//-/_}"
 
+            # Anker '^' (String-Anfang) und '$' (String-Ende) erzwingen
+            if [[ "$value" =~ ^${regex}$ ]]; then
                 ARGS[${key}]="${value}"
             else
                 echo "Warning: value '${value}' of '${1}' is invalid."
