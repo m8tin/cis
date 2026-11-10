@@ -204,7 +204,7 @@ function prepare.setREGEX() {
     REGEX[COMPOSITION]='[a-zA-Z]([a-zA-Z0-9_-]*[a-zA-Z0-9])?'
     REGEX[DATE]='[0-9]{4}-[0-9]{2}-[0-9]{2}'
     REGEX[DIRPATH]='/([a-zA-Z0-9._-]+/)*'
-    REGEX[HOST]='[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?'
+    REGEX[DOMAIN]='[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?'
     REGEX[PORT]='[0-9]{1,5}'
     REGEX[RESUMETOKEN]='[0-9][A-Za-z0-9_-]+'
     REGEX[SNAPSHOT]='@[a-zA-Z]([a-zA-Z0-9.:_-]*[a-zA-Z0-9])?'
@@ -212,7 +212,7 @@ function prepare.setREGEX() {
     REGEX[USER]='[a-zA-Z]([a-zA-Z0-9._-]*[a-zA-Z0-9])?'
     REGEX[ZFS]='[a-zA-Z]([a-zA-Z0-9/_-]*[a-zA-Z0-9])?'
     # combined expressions:
-    REGEX[SSH_ADDRESS]="(${REGEX[USER]}@)?(${REGEX[HOST]})(:${REGEX[PORT]})?"
+    REGEX[SSH_ADDRESS]="(${REGEX[USER]}@)?(${REGEX[DOMAIN]})(:${REGEX[PORT]})?"
 
     # and define the array 'REGEX' as readonly.
     declare -A -g -r REGEX

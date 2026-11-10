@@ -119,7 +119,7 @@ function send() {
 
 
 base.set COMPOSITION        "${1}" "${REGEX[COMPOSITION]}"
-base.set RECEIVERHOST       "${2}" "${REGEX[HOST]}"
+base.set RECEIVERHOST       "${2}" "${REGEX[DOMAIN]}"
 base.set RECEIVERS_SNAPSHOT "${3}" "${REGEX[SNAPSHOT]}"
 base.set RESUME_TOKEN       "${4}" "${REGEX[RESUMETOKEN]}" optional
 

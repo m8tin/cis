@@ -213,7 +213,7 @@ function setup() {
 
 
 declare -A EXPECTED_ARGS=(
-    ["--domain"]="optional custom domain for definitions (e.g. 'example.net', if it differs from this host's domain)::^[a-zA-Z0-9][a-zA-Z0-9.-]*$"
+    ["--domain"]="optional custom domain for definitions (e.g. 'example.net', if it differs from this host's domain)::${REGEX[DOMAIN]}"
 )
 base.readArguments "${@}"
 setup "${ARGS[DOMAIN]}" \
