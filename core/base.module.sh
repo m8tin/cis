@@ -421,57 +421,55 @@ function base.printWithColor() {
 }
 
 function base.readArguments() {
-    if [[ ${#EXPECTED_ARGS[@]} -lt 1 ]]; then
-        printf -- 'Development-Error: missing array EXPECTED_ARGS having at least one value!\n'
-        printf -- '  declare -A EXPECTED_ARGS=(\n'
-        printf -- '      ["--host"]="target hostname (e.g. test.demo.net)::^[a-zA-Z0-9.-]+$"\n'
-        printf -- '      ["--number"]="an integer value::^[0-9]+$"\n'
-        printf -- '      ["--allowSomething"]="enable a feature (--allowSomething [true|false])::^(true|false)$"\n'
-        printf -- '  )\n'
+    if ! declare -p EXPECTED_ARGS &> /dev/null || [[ ${#EXPECTED_ARGS[@]} -lt 1 ]]; then
+        printf -- 'Development-Error: missing array EXPECTED_ARGS having at least one value!\n' >&2
+        printf -- '  declare -A EXPECTED_ARGS=(\n' >&2
+        printf -- '      ["--host"]="target hostname (e.g. test.demo.net)::^[a-zA-Z0-9.-]+$"\n' >&2
+        printf -- '      ["--number"]="an integer value::^-?[0-9]+$"\n' >&2
+        printf -- '      ["--allowSomething"]="enable a feature (--allowSomething [true|false])::^(true|false)$"\n' >&2
+        printf -- '  )\n' >&2
         exit 1
     fi
 
     declare -gA ARGS
     while [ $# -gt 0 ]; do
-        # Ist das aktuelle Argument in ${1} als Schlüssel in EXPECTED_ARGS definiert?
-        local config="${EXPECTED_ARGS[${1}]}"
+        local config="${EXPECTED_ARGS[${1}]:-}"
         local regex="${config##*::}"       # Alles NACH dem letzten '::'
+        local shift_steps=1
+        local value=""
         if [[ -n "${config}" && -n "${regex}" && "${config}" != "${regex}" ]]; then
-            # Prüfen, ob ein expliziter Wert übergeben wurde
-            if [ -n "${2}" ] && [ "${2}" != -* ]; then
-                local value="${2}"
-                local shift_steps=2
-            else
-                local value="true"
-                local shift_steps=1
+            if [ -n "${2:-}" ] && [[ "${2:-}" != -* ]]; then
+                value="${2:-}"
+                shift_steps=2
+            elif [[ "${regex}" == *true* ]]; then
+                value="true"
             fi
 
-            # Key für das ARGS-Array aufbereiten (z.B. "--allow-Something" -> "ALLOW_SOMETHING")
+            # Prepare key for the ARGS-Array (e.g. "--allow-Something" -> "allow_Something")
             local key="${1#--}"
-            key="${key^^}"
             key="${key//-/_}"
 
-            # Anker '^' (String-Anfang) und '$' (String-Ende) erzwingen
+            # Enforce '^' (start of string) and '$' (end of string) anchors
             if [[ "$value" =~ ^${regex}$ ]]; then
                 ARGS[${key}]="${value}"
             else
-                echo "Warning: value '${value}' of '${1}' is invalid."
+                printf -- "Warning: value '%s' of '%s' is invalid.\n" "${value}" "${1}" >&2
                 ARGS[${key}]=""
             fi
 
             shift ${shift_steps}
         elif [[ -n "${config}" && ( -z "${regex}" || "${config}" == "${regex}" ) ]]; then
-            printf -- "Development-Error: no regex in array EXPECTED_ARGS defined for '${1}' (missing '::')!\n"
+            printf -- "Development-Error: no regex in array EXPECTED_ARGS defined for '%s' (missing '::')!\n" "${1}" >&2
+            exit 1
         else
-            printf -- "\nUsage: ${0##*/} [OPTIONS]\n"
-            printf -- "Options:\n"
+            printf -- "\nUsage: %s [OPTIONS]\n" "${0##*/}" >&2
+            printf -- "Options:\n" >&2
 
-            # Da assoziative Arrays keine feste Reihenfolge haben, sortieren wir die Keys alphabetisch
             local -r sorted_flags=($(for f in "${!EXPECTED_ARGS[@]}"; do echo "${f}"; done | sort))
             for flag in "${sorted_flags[@]}"; do
                 config="${EXPECTED_ARGS[${flag}]}"
                 local help_text="${config%::*}"    # Alles VOR dem letzten '::'
-                printf -- "  %-22s %s\n" "${flag}" "${help_text}"
+                printf -- "  %-22s %s\n" "${flag}" "${help_text}" >&2
             done
             exit 1
         fi

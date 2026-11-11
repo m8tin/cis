@@ -216,7 +216,7 @@ declare -A EXPECTED_ARGS=(
     ["--domain"]="optional custom domain for definitions (e.g. 'example.net', if it differs from this host's domain)::${REGEX[DOMAIN]}"
 )
 base.readArguments "${@}"
-setup "${ARGS[DOMAIN]}" \
+setup "${ARGS[domain]}" \
     && exit 0
 
 exit 1
