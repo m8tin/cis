@@ -424,56 +424,102 @@ function base.readArguments() {
     if ! declare -p EXPECTED_ARGS &> /dev/null || [[ ${#EXPECTED_ARGS[@]} -lt 1 ]]; then
         printf -- 'Development-Error: missing array EXPECTED_ARGS having at least one value!\n' >&2
         printf -- '  declare -A EXPECTED_ARGS=(\n' >&2
-        printf -- '      ["--host"]="target hostname (e.g. test.demo.net)::^[a-zA-Z0-9.-]+$"\n' >&2
-        printf -- '      ["--number"]="an integer value::^-?[0-9]+$"\n' >&2
-        printf -- '      ["--allowSomething"]="enable a feature (--allowSomething [true|false])::^(true|false)$"\n' >&2
+        printf -- '         ["--host"]="required: short hostname (e.g. test).::[a-zA-Z0-9.-]+"\n' >&2
+        printf -- '       ["--domain"]="optional: domain (e.g. demo.net) to generate a FQDN.::([a-zA-Z0-9.-]+)?"\n' >&2
+        printf -- '       ["--number"]="required: positive or negative integer value.::-?[0-9]+"\n' >&2
+        printf -- '      ["--feature"]="required: enable the feature (or explicit not: --feature false).::(true|false)"\n' >&2
+        printf -- '         ["--flag"]="optional: enables the mode if exists (or explicit: --flag true).::(true|false)?"\n' >&2
         printf -- '  )\n' >&2
         exit 1
     fi
 
-    declare -gA ARGS
+    unset ARGS
+    declare -gA ARGS=()
+    local failure="false"
+    local config regex key value shift_steps
     while [ $# -gt 0 ]; do
-        local config="${EXPECTED_ARGS[${1}]:-}"
-        local regex="${config##*::}"       # Alles NACH dem letzten '::'
-        local shift_steps=1
-        local value=""
-        if [[ -n "${config}" && -n "${regex}" && "${config}" != "${regex}" ]]; then
-            if [ -n "${2:-}" ] && [[ "${2:-}" != -* ]]; then
-                value="${2:-}"
-                shift_steps=2
-            elif [[ "${regex}" == *true* ]]; then
-                value="true"
-            fi
-
-            # Prepare key for the ARGS-Array (e.g. "--allow-Something" -> "allow_Something")
-            local key="${1#--}"
-            key="${key//-/_}"
-
-            # Enforce '^' (start of string) and '$' (end of string) anchors
-            if [[ "$value" =~ ^${regex}$ ]]; then
-                ARGS[${key}]="${value}"
-            else
-                printf -- "Warning: value '%s' of '%s' is invalid.\n" "${value}" "${1}" >&2
-                ARGS[${key}]=""
-            fi
-
-            shift ${shift_steps}
-        elif [[ -n "${config}" && ( -z "${regex}" || "${config}" == "${regex}" ) ]]; then
-            printf -- "Development-Error: no regex in array EXPECTED_ARGS defined for '%s' (missing '::')!\n" "${1}" >&2
-            exit 1
-        else
-            printf -- "\nUsage: %s [OPTIONS]\n" "${0##*/}" >&2
-            printf -- "Options:\n" >&2
-
-            local -r sorted_flags=($(for f in "${!EXPECTED_ARGS[@]}"; do echo "${f}"; done | sort))
-            for flag in "${sorted_flags[@]}"; do
-                config="${EXPECTED_ARGS[${flag}]}"
-                local help_text="${config%::*}"    # Alles VOR dem letzten '::'
-                printf -- "  %-22s %s\n" "${flag}" "${help_text}" >&2
-            done
-            exit 1
+        # Empty argument at flag position (e.g. unset variable): no flag given, nothing to read
+        if [ -z "${1}" ]; then
+            shift
+            continue
         fi
+
+        config="${EXPECTED_ARGS[${1}]:-}"
+        if [ -z "${config}" ]; then
+            printf -- "Error: unknown argument '%s'.\n" "${1}" >&2
+            failure=true
+            shift
+            continue
+        fi
+
+        regex="${config##*::}"       # Alles NACH dem letzten '::'
+        if [ "${regex}" == "${config}" ]; then
+            regex=""
+        fi
+
+        shift_steps=1
+        value=""
+        # An empty value ("") is consumed too, the regex decides whether it is valid
+        if [ $# -ge 2 ] && [[ "${2}" != --* ]]; then
+            value="${2}"
+            shift_steps=2
+        elif [[ "${regex}" == *true* ]]; then
+            value="true"
+        fi
+
+        # Prepare key for the ARGS-Array (e.g. "--allow-Something" -> "allow_Something")
+        key="${1#--}"
+        key="${key//-/_}"
+
+
+        if [ -n "${ARGS[${key}]+set}" ]; then
+            printf -- "Error: argument '%s' given more than once.\n" "${1}" >&2
+            failure=true
+        # Enforce '^' (start of string) and '$' (end of string) anchors
+        elif [[ -n "${regex}" && "${value}" =~ ^${regex}$ ]]; then
+            ARGS[${key}]="${value}"
+        else
+            printf -- "Error: value '%s' of '%s' is invalid.\n" "${value}" "${1}" >&2
+            failure="true"
+            # Mark as given, so it is not reported as missing too
+            ARGS[${key}]=""
+        fi
+
+        shift ${shift_steps}
     done
+
+    # Check all expected arguments and build the usage text on the way
+    local -a sorted_flags
+    mapfile -t sorted_flags < <(printf '%s\n' "${!EXPECTED_ARGS[@]}" | sort)
+    readonly sorted_flags
+    local flag line usage=""
+    for flag in "${sorted_flags[@]}"; do
+        config="${EXPECTED_ARGS[${flag}]}"
+        regex="${config##*::}"
+        if [[ -z "${regex}" || "${config}" == "${regex}" ]]; then
+            printf -- "Development-Error: no regex in array EXPECTED_ARGS defined for '%s' (missing '::')!\n" "${flag}" >&2
+            failure="true"
+        fi
+
+        key="${flag#--}"
+        key="${key//-/_}"
+
+        # An argument is required if its regex does not accept an empty value
+        if [[ -z "${ARGS[${key}]+set}"  && !  "" =~ ^${regex}$ ]]; then
+            printf -- "Error: missing required argument '%s'.\n" "${flag}" >&2
+            failure="true"
+        fi
+
+        # Create a formated line
+        printf -v line -- "  %-22s %s" "\"${flag}\"" "${config%::*}"
+        # Append the line to usage, terminated by a newline ($'\n')
+        usage+="${line}"$'\n'
+    done
+
+    if ${failure}; then
+        printf -- "\nUsage: %s [OPTIONS]\nOptions:\n%s" "${0##*/}" "${usage}" >&2
+        exit 1
+    fi
 }
 
 function base.set() {

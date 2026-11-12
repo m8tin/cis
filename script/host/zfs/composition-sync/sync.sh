@@ -125,7 +125,7 @@ function receive() {
         fi
 
         # Add "-s" for resumable streams in the next line at zfs receive. Not done yet because of: cannot receive resume stream: kernel modules must be upgraded to receive this stream.
-        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} \"${_COMPOSITION}\" \"${_RECEIVERHOST}\" \"${_COMMON_SNAPSHOT}\" \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS_BACKUP}"
+        ${_SSH_COMMAND} "sudo ${_SEND_SCRIPT:?"Missing SEND_SCRIPT"} --composition \"${_COMPOSITION}\" --host \"${_RECEIVERHOST}\" --snapshot \"${_COMMON_SNAPSHOT}\" --token \"${_RESUME_TOKEN}\"" | zfs receive -v "${_ZFS_BACKUP}"
         if [ $? -ne 0 ]; then
             print.failure "Unable to receive stream" \
             "These settings were used" \

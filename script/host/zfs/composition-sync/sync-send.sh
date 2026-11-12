@@ -118,16 +118,19 @@ function send() {
 
 
 
-base.set COMPOSITION        "${1}" "${REGEX[COMPOSITION]}"
-base.set RECEIVERHOST       "${2}" "${REGEX[DOMAIN]}"
-base.set RECEIVERS_SNAPSHOT "${3}" "${REGEX[SNAPSHOT]}"
-base.set RESUME_TOKEN       "${4}" "${REGEX[RESUMETOKEN]}" optional
+declare -A EXPECTED_ARGS=(
+    ["--composition"]="required: composition to send.::${REGEX[COMPOSITION]}"
+           ["--host"]="required: host receiving the transfer.::${REGEX[DOMAIN]}"
+       ["--snapshot"]="required: existing snapshot on the receiving host to append this transfer to.::${REGEX[SNAPSHOT]}"
+          ["--token"]="optional: token to resume a previous transfer.::(${REGEX[RESUMETOKEN]})?"
+)
+base.readArguments "${@}"
 
-! composition.shouldBeSyncedByGivenHost "${COMPOSITION}" "${RECEIVERHOST}" \
+! composition.shouldBeSyncedByGivenHost "${ARGS[composition]}" "${ARGS[host]}" \
     && base.abort "no sync-host available" \
-        "Host '${RECEIVERHOST}' is no sync-host for composition: '${COMPOSITION}'"
+        "Host '${ARGS[host]}' is no sync-host for composition: '${ARGS[composition]}'"
 
-send "${COMPOSITION}" "${RECEIVERHOST}" "${RECEIVERS_SNAPSHOT}" "${RESUME_TOKEN}" \
+send "${ARGS[composition]}" "${ARGS[host]}" "${ARGS[snapshot]}" "${ARGS[token]}" \
     && exit 0
 
 print.failure "Something unexpected happend."
