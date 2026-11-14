@@ -34,9 +34,14 @@ function addNormalUser() {
     return 1
 }
 
+
+
 # sanitizes all parameters
-base.set USER "${1}" '^[a-z][-a-z0-9_.]*$'
-addNormalUser "${USER:?"Missing USER"}" \
+declare -A EXPECTED_ARGS=(
+    ["--user"]="required: user to add to this host.::${REGEX[USER]}"
+)
+base.readArguments "${@}"
+addNormalUser "${ARGS[user]}" \
     && exit 0
 
 exit 1

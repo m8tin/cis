@@ -117,10 +117,12 @@ function snapshot() {
 
 
 
-# Parameter 1: Only one of these values (MINUTELY, HOURLY, DAILY, MONTHLY, NONE) are allowed, or empty.
-base.set MODE "${1}" '^(MINUTELY|HOURLY|DAILY|MONTHLY|NONE)$' optional
-
-snapshot "${MODE}"
+# sanitizes all parameters
+declare -A EXPECTED_ARGS=(
+    ["--mode"]="optional: default is HOURLY.::(MINUTELY|HOURLY|DAILY|MONTHLY|NONE)?"
+)
+base.readArguments "${@}"
+snapshot "${ARGS[mode]}"
 cleanup
 
 exit 0

@@ -9,9 +9,9 @@ source /cis/core/base.module.sh
 
 
 echo "Setup the user and permission to enable the monitoring this host ... " \
-    && "${CIS[COREROOT]:?"Missing CIS_COREROOT"}addNormalUser.sh" monitoring \
+    && "${CIS[COREROOT]:?"Missing CIS_COREROOT"}addNormalUser.sh" --user monitoring \
     && echo \
-    && "${CIS[COREROOT]:?"Missing CIS_COREROOT"}defineAuthorizedKeysOfUser.sh" "${CIS[DOMAINDEFINITIONS]}" monitoring \
+    && "${CIS[COREROOT]:?"Missing CIS_COREROOT"}defineAuthorizedKeysOfUser.sh" --definitions "${CIS[DOMAINDEFINITIONS]}" --user monitoring \
     && exit 0
 
 exit 1

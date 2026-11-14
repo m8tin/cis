@@ -108,7 +108,7 @@ function defineAuthorizedKeysOfUser() {
     local _DOMAIN="${_DEFINITIONS##*/definitions/}"        #Removes longest  matching pattern '*/definitions/' from the begin
     readonly _DOMAIN="${_DOMAIN%/}"                        #Removes shortest matching pattern '/'              from the end
     #Build from components for safety
-    readonly _DEFINITIONS="${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}"
+    readonly _DEFINITIONS="${_CIS_ROOT:?"Missing ROOT"}definitions/${_DOMAIN:?"Missing DOMAIN"}/"
 
 
     local -r _USER="${2:?"Missing second parameter USER"}"
@@ -118,9 +118,9 @@ function defineAuthorizedKeysOfUser() {
         root)
             prepareFolder "/root/.ssh" \
                 && echo \
-                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/root/.ssh/authorized_keys" \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" --definitions "${_DEFINITIONS}" --fullfile "/root/.ssh/authorized_keys" \
                 && echo \
-                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/etc/ssh/sshd_config.d/AccessRestriction.conf" \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" --definitions "${_DEFINITIONS}" --fullfile "/etc/ssh/sshd_config.d/AccessRestriction.conf" \
                 && return 0 || return 1
             ;;
         *)
@@ -128,20 +128,23 @@ function defineAuthorizedKeysOfUser() {
                 && echo \
                 && ensureGroupMembership "${_USER}" \
                 && echo \
-                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/home/${_USER}/.ssh/authorized_keys" \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" --definitions "${_DEFINITIONS}" --fullfile "/home/${_USER}/.ssh/authorized_keys" \
                 && echo \
-                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${_DEFINITIONS}" "/etc/ssh/sshd_config.d/AccessRestriction.conf" \
+                && "${_CORE_SCRIPTS:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" --definitions "${_DEFINITIONS}" --fullfile "/etc/ssh/sshd_config.d/AccessRestriction.conf" \
                 && return 0 || return 1
             ;;
     esac
 }
 
+
+
 # sanitizes all parameters
-base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$'
-base.set USER "${2}" '^[-a-zA-Z0-9/:@._]*$'
-defineAuthorizedKeysOfUser \
-    "${DEFINITIONS:?"Missing DEFINITIONS"}" \
-    "${USER:?"Missing USER"}" \
+declare -A EXPECTED_ARGS=(
+    ["--definitions"]="required: root-folder of the definitions.::${REGEX[DIRPATH]}"
+           ["--user"]="required: user where the keys are set.::${REGEX[USER]}"
+)
+base.readArguments "${@}"
+defineAuthorizedKeysOfUser "${ARGS[definitions]}" "${ARGS[user]}" \
     && exit 0
 
 exit 1

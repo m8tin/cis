@@ -90,14 +90,16 @@ function addAndCheckGitRepository() {
     return 1
 }
 
+
+
 # sanitizes all parameters
-base.set FOLDER "${1}" '^[-a-zA-Z0-9/:@._]*/$'
-base.set RIGHTS "${2}" '^(readonly|writable)$'
-base.set SUGGESTED_REPOSITORY "${3}" '^[-a-zA-Z0-9/:@._]*$' optional
-addAndCheckGitRepository \
-    "${FOLDER:?"Missing FOLDER"}" \
-    "${RIGHTS:?"Missing RIGHTS"}" \
-    "${SUGGESTED_REPOSITORY}" \
+declare -A EXPECTED_ARGS=(
+                  ["--folder"]="required: folder of the local repository.::${REGEX[DIRPATH]}"
+              ["--permission"]="required: permission of the repository to check (readonly|writable).::(readonly|writable)"
+    ["--suggested-repository"]="optional: suggested url of the repository to clone it.::${REGEX[REPOSITORY]}"
+)
+base.readArguments "${@}"
+addAndCheckGitRepository  "${ARGS[folder]}" "${ARGS[permission]}" "${ARGS[suggested_repository]}" \
     && exit 0
 
 exit 1

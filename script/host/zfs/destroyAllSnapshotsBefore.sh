@@ -22,7 +22,7 @@ function listSnapshotsToDestroy() {
     return 0
 }
 
-function main() {
+function destroyAllSnapshotsBefore() {
     local _SNAPSHOT
     _SNAPSHOT="${1:?"Missing first parameter SNAPSHOT"}"
     readonly _SNAPSHOT
@@ -41,8 +41,14 @@ function main() {
     return 1
 }
 
-base.set SNAPSHOT "${1}" '^[-0-9a-zA-Z_/]@[-0-9a-zA-Z_:.]'
-main "${SNAPSHOT:?"Missing first parameter SNAPSHOT"}" && exit 0
+
+
+# sanitizes all parameters
+declare -A EXPECTED_ARGS=(
+    ["--snapshot"]="required: oldest snapshot to keep.::${REGEX[SNAPSHOT]}"
+)
+base.readArguments "${@}"
+destroyAllSnapshotsBefore "${ARGS[snapshot]}" && exit 0
 
 echo "Something went wrong."
 exit 1

@@ -41,12 +41,15 @@ function addToCrontabEveryHour() {
     return 1
 }
 
+
+
 # sanitizes all parameters
-base.set COMMAND "${1}" '^[-a-zA-Z0-9/:@._]*$'
-base.set MINUTE_VALUE "${2}" '^[-a-zA-Z0-9/:@._]*$'
-addToCrontabEveryHour \
-    "${COMMAND:?"Missing COMMAND"}" \
-    "${MINUTE_VALUE:?"Missing MINUTE_VALUE"}" \
+declare -A EXPECTED_ARGS=(
+    ["--command"]="required: command to add to the crontab.::${REGEX[COMMAND]}"
+     ["--minute"]="required: the minute of each hour were the command will be run.::${REGEX[INTEGER]}"
+)
+base.readArguments "${@}"
+addToCrontabEveryHour "${ARGS[command]}" "${ARGS[minute]}" \
     && exit 0
 
 exit 1

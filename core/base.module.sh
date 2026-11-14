@@ -25,7 +25,7 @@ function base.checkAllInputParameters() {
             # Has to start with an alphanumeric char '--', '/' or '@'
             if [[ ! "${_ARG}" =~ ^(--|/|@)?[[:alnum:]] ]]; then
                 echo "❌ Security base.checkAllInputParameters(): No special characters except '--', '/' or '@' are allowed at the beginning of a parameter: '${_ARG}'" >&2
-                _SUCCESS="false"
+                    _SUCCESS="false"
             fi
             # No forbidden character is allowed to remain
             if [ -n "${_ARG//[${_ALLOWED_CHARS}]/}" ]; then
@@ -205,7 +205,10 @@ function prepare.setREGEX() {
     REGEX[DATE]='[0-9]{4}-[0-9]{2}-[0-9]{2}'
     REGEX[DIRPATH]='/([a-zA-Z0-9._-]+/)*'
     REGEX[DOMAIN]='[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?'
+    REGEX[FULLFILE]='/[/a-zA-Z0-9._-]+'
+    REGEX[INTEGER]='[0-9]{1,19}'
     REGEX[PORT]='[0-9]{1,5}'
+    REGEX[REPOSITORY]='[-a-zA-Z0-9/:@._]*'
     REGEX[RESUMETOKEN]='[0-9][A-Za-z0-9_-]+'
     REGEX[SNAPSHOT]='@[a-zA-Z]([a-zA-Z0-9.:_-]*[a-zA-Z0-9])?'
     REGEX[SYNCSNAPSHOT]='@SYNC_[a-zA-Z0-9.:_-]*[a-zA-Z0-9]'

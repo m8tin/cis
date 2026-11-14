@@ -9,7 +9,7 @@ base.loadModule composition
 
 
 
-function setup() {
+function setupSyncHost() {
     local _COMPOSITION _COMPOSITIONS_FOLDER
     _COMPOSITION="${1}"
     _COMPOSITIONS_FOLDER="${CIS[DOMAINDEFINITIONS]}compositions/"
@@ -47,7 +47,11 @@ function setup() {
 
 
 
-base.set COMPOSITION "${1}" '^[a-zA-Z0-9][a-zA-Z0-9_-]*$' optional
-setup "${COMPOSITION}"
+# sanitizes all parameters
+declare -A EXPECTED_ARGS=(
+    ["--composition"]="optional: oldest snapshot to keep.::(${REGEX[COMPOSITION]})?"
+)
+base.readArguments "${@}"
+setupSyncHost "${ARGS[composition]}"
 
 

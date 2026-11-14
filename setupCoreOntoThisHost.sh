@@ -130,14 +130,14 @@ function addDefinition(){
     [ "$(id -u)" == "0" ] \
         && echo \
         && echo "Running setup as 'root' trying to add definition repository:" \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINDEFINITIONS]}" readonly "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" --folder "${CIS[DOMAINDEFINITIONS]}" --permission readonly --suggested-repository "${_REPOSITORY}" \
         && echo "  - definitions are usable for this host." \
         && return 0
 
     [ "$(id -u)" != "0" ] \
         && echo \
         && echo "Running setup as 'user' trying to add definition repository:" \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINDEFINITIONS]}" writable "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" --folder "${CIS[DOMAINDEFINITIONS]}" --permission writable --suggested-repository "${_REPOSITORY}" \
         && echo "  - definitions are usable, as working copy." \
         && return 0
 
@@ -150,7 +150,7 @@ function addState() {
     [ "$(id -u)" == "0" ] \
         && echo \
         && echo "Running setup as 'root' trying to add state repository:" \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINSTATES]}" writable "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" --folder "${CIS[DOMAINSTATES]}" --permission writable --suggested-repository "${_REPOSITORY}" \
         && echo "  - states are usable for this host." \
         && setSSLPermissions \
         && echo "  - permissions for SSL are set." \
@@ -159,7 +159,7 @@ function addState() {
     [ "$(id -u)" != "0" ] \
         && echo \
         && echo "Running setup as 'user' trying to add state repository:" \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" "${CIS[DOMAINSTATES]}" writable "${_REPOSITORY}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addAndCheckGitRepository.sh" --folder "${CIS[DOMAINSTATES]}" --permission writable --suggested-repository "${_REPOSITORY}" \
         && echo "  - states are usable, as working copy." \
         && return 0
 
@@ -178,17 +178,17 @@ function setupCoreFunctionality() {
         && echo \
         && echo "Using definitions: '${CIS[DOMAINDEFINITIONS]:?"Missing DEFINITIONS"}' ..." \
         && echo \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${CIS[DOMAINDEFINITIONS]}" root \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" --definitions "${CIS[DOMAINDEFINITIONS]}" --user root \
         && echo \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${CIS[DOMAINDEFINITIONS]}" /etc/adduser.conf \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" --definitions "${CIS[DOMAINDEFINITIONS]}" --fullfile /etc/adduser.conf \
         && echo \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addNormalUser.sh" jenkins \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addNormalUser.sh" --user jenkins \
         && echo \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" "${CIS[DOMAINDEFINITIONS]}" jenkins \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}defineAuthorizedKeysOfUser.sh" --definitions "${CIS[DOMAINDEFINITIONS]}" --user jenkins \
         && echo \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" "${CIS[DOMAINDEFINITIONS]}" /etc/sudoers.d/allow-jenkins-updateRepositories \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}ensureUsageOfDefinitions.sh" --definitions "${CIS[DOMAINDEFINITIONS]}" --fullfile /etc/sudoers.d/allow-jenkins-updateRepositories \
         && echo \
-        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addToCrontabEveryHour.sh" "${CIS[FULLSCRIPTNAME]:?"Missing FULLSCRIPTNAME"}" "${_MINUTE_FROM_OWN_IP}" \
+        && "${CIS[COREROOT]:?"Missing CORE_SCRIPTS"}addToCrontabEveryHour.sh" --command "${CIS[FULLSCRIPTNAME]:?"Missing FULLSCRIPTNAME"}" --minute "${_MINUTE_FROM_OWN_IP}" \
         && return 0
 
     return 1

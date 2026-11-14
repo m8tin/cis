@@ -210,12 +210,15 @@ function ensureUsageOfDefinitions() {
     return 1
 }
 
+
+
 # sanitizes all parameters
-base.set DEFINITIONS "${1}" '^[-a-zA-Z0-9/:@._]*$'
-base.set CURRENT_FULLFILE "${2}" '^[-a-zA-Z0-9/:@._]*$'
-ensureUsageOfDefinitions \
-    "${DEFINITIONS:?"Missing DEFINITIONS"}" \
-    "${CURRENT_FULLFILE:?"Missing CURRENT_FULLFILE"}" \
+declare -A EXPECTED_ARGS=(
+    ["--definitions"]="required: root-folder of the definitions.::${REGEX[DIRPATH]}"
+       ["--fullfile"]="required: full name of the current file which will be replaced.::${REGEX[FULLFILE]}"
+)
+base.readArguments "${@}"
+ensureUsageOfDefinitions "${ARGS[definitions]}" "${ARGS[fullfile]}" \
     && exit 0
 
 exit 1
