@@ -4,6 +4,10 @@ base.loadModule ssh
 
 
 
+_DEBUG_PATH="/tmp/monitor/"
+
+
+
 function checkSync() {
     local _CALLING_SCRIPTNAME _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
     _CALLING_SCRIPTNAME="${1:?"checkSync(): Missing first parameter CALLING_SCRIPTNAME"}"
@@ -12,7 +16,7 @@ function checkSync() {
     _GIVEN_REMOTE_HOSTNAME_FQDN="${4}"
     readonly _CALLING_SCRIPTNAME _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
 
-    local _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME _DEBUG_PATH
+    local _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME
     _REMOTE_HOSTNAME_FQDN="${_REMOTE_HOST%%:*}"            #Removes longest  matching pattern ':*' from the end
     _REMOTE_HOSTNAME_SHORT="${_REMOTE_HOSTNAME_FQDN%%.*}"  #Removes longest  matching pattern '.*' from the end
 
@@ -24,11 +28,10 @@ function checkSync() {
     _ZFS_SNAPSHOT_FILTER="@SYNC_${_DEFINED_REMOTE_HOSTNAME_FQDN}"
 
     _NOW_UTC_UNIXTIME=$(date -u +%s)
-    _DEBUG_PATH="/tmp/monitor/"
-    readonly _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME _DEBUG_PATH
+    readonly _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME
 
     [ "${_MODE}" == "debug" ] \
-        && mkdir -p "${_DEBUG_PATH}" > /dev/null \
+        && mkdir -p "${_DEBUG_PATH:?"Missing DEBUG_PATH"}" > /dev/null \
         && echo "Now: ${_NOW_UTC_UNIXTIME}" > ${_DEBUG_PATH}SECONDS_BEHIND_${_REMOTE_HOST}.txt
 
     ! [ -d "${CIS[COMPOSITIONS]:?"Missing global parameter CIS_COMPOSITIONS"}" ] \
@@ -76,14 +79,18 @@ function checkSync() {
 }
 
 #echo "${CIS[SCRIPTNAME]}" > "/tmp/test.txt"
-base.set CALLING_SCRIPTNAME "${1:?"NAME of calling script missing:"}" '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'
-base.set REMOTE_HOST "${2:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-base.set GIVEN_REMOTE_HOSTNAME_FQDN "${3}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
-base.set MODE "${4:-"normal"}" '^(debug|normal)$'
+declare -A EXPECTED_ARGS=(
+    ["--calling-script"]="required: name of the script unsing this one.::[a-zA-Z0-9][a-zA-Z0-9._-]*"
+    ["--host"]="required: FQDN of the remote host: e.g. host.example.net[:port].::${REGEX[DOMAIN]}(:${REGEX[PORT]})?"
+    ["--mode"]="optional: default mode is normal, you can set (debug|normal).::(debug|normal)?"
+    ["--alternative-hostname"]="optional: hostname if the domain does not match.::(${REGEX[DOMAIN]})?"
+)
+base.readArguments "${@}"
+_DEBUG_PATH="/tmp/monitor/"
 
-RESULTS=$(checkSync "${CALLING_SCRIPTNAME%.on}" "${REMOTE_HOST}" "${MODE}" "${GIVEN_REMOTE_HOSTNAME_FQDN}")
+RESULTS=$(checkSync "${ARGS[calling_script]%.on}" "${ARGS[host]}" "${ARGS[mode]:-normal}" "${ARGS[alternative_hostname]}")
 
 [ "${MODE}" == "debug" ] \
-    && echo "$RESULTS" > ${_DEBUG_PATH}RESULTS_${REMOTE_HOST}.txt
+    && echo "$RESULTS" > ${_DEBUG_PATH}RESULTS_${ARGS[host]}.txt
 
 echo "$RESULTS"

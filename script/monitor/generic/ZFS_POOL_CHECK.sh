@@ -17,8 +17,13 @@ function testPool(){
     return 0
 }
 
-base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-base.set REMOTE_POOL "${2:?"Missing name of zpool: e.g. zpool1"}" '^[a-zA-Z0-9_-]+$'
-testPool "${REMOTE_HOST}" "${REMOTE_POOL}" && exit 0
+
+
+declare -A EXPECTED_ARGS=(
+     ["--host"]="required: FQDN of the remote host: e.g. host.example.net[:port].::${REGEX[DOMAIN]}(:${REGEX[PORT]})?"
+    ["--zpool"]="required: ZFS pool name to test.::[a-zA-Z0-9_-]+"
+)
+base.readArguments "${@}"
+testPool "${ARGS[host]}" "${ARGS[zpool]}" && exit 0
 
 exit 1

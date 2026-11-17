@@ -5,6 +5,10 @@ base.loadModule ssh
 
 
 
+_DEBUG_PATH="/tmp/monitor/"
+
+
+
 function checkSync() {
     local _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
     _REMOTE_HOST="${1:?"checkSync(): Missing first parameter REMOTE_HOST"}"
@@ -12,7 +16,7 @@ function checkSync() {
     _GIVEN_REMOTE_HOSTNAME_FQDN="${3}"
     readonly _REMOTE_HOST _MODE _GIVEN_REMOTE_HOSTNAME_FQDN
 
-    local _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME _DEBUG_PATH
+    local _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME
     _REMOTE_HOSTNAME_FQDN="${_REMOTE_HOST%%:*}"            #Removes longest  matching pattern ':*' from the end
     _REMOTE_HOSTNAME_SHORT="${_REMOTE_HOSTNAME_FQDN%%.*}"  #Removes longest  matching pattern '.*' from the end
 
@@ -24,11 +28,10 @@ function checkSync() {
     _ZFS_SNAPSHOT_FILTER="@SYNC_${_DEFINED_REMOTE_HOSTNAME_FQDN}"
 
     _NOW_UTC_UNIXTIME=$(date -u +%s)
-    _DEBUG_PATH="/tmp/monitor/"
-    readonly _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME _DEBUG_PATH
+    readonly _REMOTE_HOSTNAME_FQDN _REMOTE_HOSTNAME_SHORT _DEFINED_REMOTE_HOSTNAME_FQDN _ZFS_SNAPSHOT_FILTER _NOW_UTC_UNIXTIME
 
     [ "${_MODE}" == "debug" ] \
-        && mkdir -p "${_DEBUG_PATH}" > /dev/null \
+        && mkdir -p "${_DEBUG_PATH:?"Missing DEBUG_PATH"}" > /dev/null \
         && echo "Now: ${_NOW_UTC_UNIXTIME}" > ${_DEBUG_PATH}SECONDS_BEHIND_${_REMOTE_HOST}.txt
 
     ! [ -d "${CIS[COMPOSITIONS]:?"Missing global parameter CIS_COMPOSITIONS"}" ] \
@@ -75,13 +78,17 @@ function checkSync() {
     done
 }
 
-base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-base.set GIVEN_REMOTE_HOSTNAME_FQDN "${2}" '^[a-zA-Z0-9][a-zA-Z0-9.-]*$' optional
-base.set MODE "${3:-"normal"}" '^(debug|normal)$'
 
-RESULTS=$(checkSync "${REMOTE_HOST}" "${MODE}" "${GIVEN_REMOTE_HOSTNAME_FQDN}")
 
-[ "${MODE}" == "debug" ] \
-    && echo "$RESULTS" > ${_DEBUG_PATH}RESULTS_${REMOTE_HOST}.txt
+declare -A EXPECTED_ARGS=(
+    ["--host"]="required: FQDN of the remote host: e.g. host.example.net[:port].::${REGEX[DOMAIN]}(:${REGEX[PORT]})?"
+    ["--mode"]="optional: default mode is normal, you can set (debug|normal).::(debug|normal)?"
+    ["--alternative-hostname"]="optional: hostname if the domain does not match.::(${REGEX[DOMAIN]})?"
+)
+base.readArguments "${@}"
+RESULTS=$(checkSync "${ARGS[host]}" "${ARGS[mode]:-normal}" "${ARGS[alternative_hostname]}")
+
+[ "${ARGS[mode]}" == "debug" ] \
+    && echo "$RESULTS" > ${_DEBUG_PATH}RESULTS_${ARGS[host]}.txt
 
 echo "$RESULTS"

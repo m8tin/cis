@@ -28,7 +28,11 @@ function testDomain() {
     fi
 }
 
-# FQDN of server: e.g. host.example.net[:port]
-base.set REMOTE_HOST "${1}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$' optional
-testDomain "${REMOTE_HOST}" && exit 0
+
+
+declare -A EXPECTED_ARGS=(
+    ["--host"]="optional: FQDN of the remote host: e.g. host.example.net[:port].::${REGEX[DOMAIN]}(:${REGEX[PORT]})?"
+)
+base.readArguments "${@}"
+testDomain "${ARGS[host]}" && exit 0
 exit 1

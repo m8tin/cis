@@ -26,7 +26,12 @@ function testSpace(){
     return 0
 }
 
-base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-testSpace "${REMOTE_HOST}" 80 90 && exit 0
+
+
+declare -A EXPECTED_ARGS=(
+    ["--host"]="required: FQDN of the remote host: e.g. host.example.net[:port].::${REGEX[DOMAIN]}(:${REGEX[PORT]})?"
+)
+base.readArguments "${@}"
+testSpace "${ARGS[host]}" 80 90 && exit 0
 
 exit 1

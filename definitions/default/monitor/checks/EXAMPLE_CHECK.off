@@ -3,4 +3,4 @@ source /cis/core/base.module.sh
 
 
 
-${CIS[GENERICMONITORCHECKS]:?"Missing GENERICMONITORCHECKS"}CIS_OWN_DOMAIN_CHECK.sh "your-host.your-domain.net[:ssh_port]"
+${CIS[GENERICMONITORCHECKS]:?"Missing GENERICMONITORCHECKS"}CIS_OWN_DOMAIN_CHECK.sh --host "your-host.your-domain.net[:ssh_port]"

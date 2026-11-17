@@ -15,7 +15,12 @@ function checkViaSSH() {
     ! [ -z "${_RESULT}" ] && echo "OK#UPTIME:${_RESULT}" || echo "FAIL"
 }
 
-base.set REMOTE_HOST "${1:?"FQDN of server missing: e.g. host.example.net[:port]"}" '^([a-zA-Z0-9][a-zA-Z0-9.-]*)+(:[0-9]+)?$'
-checkViaSSH "${REMOTE_HOST}" && exit 0
+
+
+declare -A EXPECTED_ARGS=(
+    ["--host"]="required: FQDN of the remote host: e.g. host.example.net[:port].::${REGEX[DOMAIN]}(:${REGEX[PORT]})?"
+)
+base.readArguments "${@}"
+checkViaSSH "${ARGS[host]}" && exit 0
 
 exit 1
