@@ -161,7 +161,7 @@ function receiveLoopAll() {
     composition.printAllSyncedByThisHost | while read -r _COMPOSITION; do
         ! screen -ls | grep -qoE "[0-9]+\.compositionsync\.${_COMPOSITION}" \
             && print.highlight "Starting screen sync session of composition: ${_COMPOSITION}\n" \
-            && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --loopSingle "${_COMPOSITION}"
+            && screen -dmS "composition-sync:${_COMPOSITION}" "${_SCRIPT}" --command loopSingle --composition "${_COMPOSITION}"
     done
 }
 
@@ -214,12 +214,12 @@ function receiveOnceSingle() {
 function usage() {
     echo
     echo 'Commands:'
-    echo '  --loopAll                   : This will start one screen session per composition ("zfssync-hosts"),'
+    echo '  loopAll                     : This will start one screen session per composition ("zfssync-hosts"),'
     echo '                                    and run the sync process in an endless loop.'
-    echo '  --onceAll                   : This will run the sync process once for each composition ("zfssync-hosts").'
+    echo '  onceAll                     : This will run the sync process once for each composition ("zfssync-hosts").'
     echo '                                    e.g.: you can use it in crontab as a daily backup.'
-    echo '  --loopSingle COMPOSITION    : This will run the sync process in an endless loop but just for the specified COMPOSITION.'
-    echo '  --onceSingle COMPOSITION    : This will run the sync process once just for the specified COMPOSITION.'
+    echo '  loopSingle COMPOSITION      : This will run the sync process in an endless loop but just for the specified COMPOSITION.'
+    echo '  onceSingle COMPOSITION      : This will run the sync process once just for the specified COMPOSITION.'
     echo
     echo 'Current environment:'
     echo "    Full name of this script  : FULLSCRIPTNAME='${CIS[FULLSCRIPTNAME]}'"
@@ -231,28 +231,30 @@ function usage() {
 
 
 
-# Parameter 2: only a subset of alphanumeric characters are allowed and [_-] if not leading (due to: -oProxyCommand=...).
-base.set COMPOSITION "${2}" "${REGEX[COMPOSITION]}" optional
-
-case "${1}" in
-    --onceAll)
+declare -A EXPECTED_ARGS=(
+        ["--command"]="required: choose (help|onceAll|onceSingle|loopAll|loopSingle).::(help|onceAll|onceSingle|loopAll|loopSingle)"
+    ["--composition"]="optional: with some commands, otherwise the single composition to send.::(${REGEX[COMPOSITION]})?"
+)
+base.readArguments "${@}"
+case "${ARGS[command]}" in
+    onceAll)
         receiveOnceAll \
             && exit 0
         ;;
-    --onceSingle)
-        receiveOnceSingle "${COMPOSITION}" \
+    onceSingle)
+        receiveOnceSingle "${ARGS[composition]}" \
             && exit 0
         ;;
-    --loopAll)
+    loopAll)
         receiveLoopAll \
             && exit 0
         ;;
-    --loopSingle)
-        receiveLoopSingle "${COMPOSITION}" \
+    loopSingle)
+        receiveLoopSingle "${ARGS[composition]}" \
             && exit 0
         ;;
     *)
-        echo "Unknown command '${1}' '${2}'"
+        echo "Given command '${ARGS[command]}', composition '${ARGS[composition]}'"
         usage
         exit 1
         ;;
